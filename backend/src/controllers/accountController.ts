@@ -42,15 +42,15 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
 // Controlador para listar todas as contas de um perfil.
 export const getAccounts = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { profileId } = req.query;
+        const { profile_id } = req.query;
 
-        // Validação de Defesa do profileId
-        if (typeof profileId !== 'string' || profileId.trim() === '') {
+        // Validação de Defesa do profile_id
+        if (typeof profile_id !== 'string' || profile_id.trim() === '') {
             res.status(400).json({ status: 'error', message: 'Invalid profile ID.' });
             return;
         }
 
-        const accounts = await accountService.getAccounts(profileId);
+        const accounts = await accountService.getAccounts(profile_id);
         res.status(200).json({ status: 'success', data: accounts });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Error';

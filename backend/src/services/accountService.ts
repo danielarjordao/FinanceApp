@@ -18,25 +18,18 @@ export interface AccountResponse extends AccountInput {
 
 // Cria uma nova conta bancária no sistema.
 export const createAccount = async (accountData: AccountInput): Promise<AccountResponse> => {
-    const { profile_id, name, type, initial_balance, balance } = accountData;
-
     const { data, error } = await supabase
         .from('accounts')
         .insert([{
-            profile_id,
-            name,
-            type: type || 'CHECKING',
-            initial_balance: initial_balance || 0,
-            // O balance atual começa igual ao initial_balance se não for enviado
-            balance: balance !== undefined ? balance : (initial_balance || 0)
+            ...accountData,
+            type: accountData.type || 'CHECKING',
+            balance: accountData.balance ?? accountData.initial_balance ?? 0
         }])
         .select()
-        // Retorna o objeto diretamente em vez de um array
         .single();
 
-    if (error) {
+    if (error)
         throw new Error(`Database error: ${error.message}`);
-    }
 
     return data as AccountResponse;
 };
