@@ -40,3 +40,14 @@ export const createAccount = async (accountData: AccountInput): Promise<AccountR
 
     return data as AccountResponse;
 };
+
+// Função para deletar uma conta (soft delete).
+export const deleteAccount = async (id: string): Promise<void> => {
+    const { error } = await supabase
+        .from('accounts')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
+
+    if (error)
+        throw new Error(`Error deleting account: ${error.message}`);
+};

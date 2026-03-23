@@ -38,3 +38,22 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
         res.status(400).json({ status: 'error', message });
     }
 };
+
+// Controlador para deletar uma conta (soft delete).
+export const deleteAccount = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        // Validação de Defesa do ID
+        if (typeof id !== 'string' || id.trim() === '') {
+            res.status(400).json({ status: 'error', message: 'Invalid account ID.' });
+            return;
+        }
+
+        await accountService.deleteAccount(id);
+        res.status(200).json({ status: 'success', message: 'Account removed.' });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Error';
+        res.status(400).json({ status: 'error', message });
+    }
+};

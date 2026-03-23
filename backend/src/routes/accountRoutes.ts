@@ -7,4 +7,8 @@ const router = Router();
 // URL: POST /api/v1/accounts
 router.post('/', accountController.createAccount);
 
+// Rota DELETE: Deleta uma conta (soft delete)
+// URL: DELETE /api/v1/accounts/:id
+router.delete('/:id', accountController.deleteAccount);
+
 export default router;
