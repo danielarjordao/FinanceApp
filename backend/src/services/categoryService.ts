@@ -1,29 +1,40 @@
 import { supabase } from '../config/supabase.js';
 
+// Interface para os dados que entram (Data Transfer Object)
 export interface CategoryInput {
     name: string;
     icon?: string;
-	// Cada utilizador tem as suas próprias categorias,
-	// por isso é necessário associar a categoria a um "profile_id" específico.
     profile_id: string;
+    type: 'INCOME' | 'EXPENSE';
 }
 
-export const createCategoryRecord = async (categoryData: CategoryInput): Promise<CategoryInput> => {
-    // Desestruturação dos dados para facilitar a manipulação
-	const { name, icon, profile_id } = categoryData;
+// Interface para o que a base de dados devolve
+export interface CategoryResponse extends CategoryInput {
+    id: string;
+    created_at: string;
+    updated_at: string;
+}
+
+// Cria um novo registo de categoria.
+export const createCategory = async (categoryData: CategoryInput): Promise<CategoryResponse> => {
+    const { name, icon, profile_id, type } = categoryData;
 
     const { data, error } = await supabase
         .from('categories')
         .insert([{
             name,
-			// Ícone padrão se não for enviado
+             // Garante consistência com o SQL
+            type: type?.toUpperCase() || 'EXPENSE',
             icon: icon || 'tag',
             profile_id
         }])
-        .select();
+        .select()
+        // .single() garante que recebe um objeto e não um array [0]
+        .single();
 
-    if (error)
-		throw error;
+    if (error) {
+        throw new Error(`Database error: ${error.message}`);
+    }
 
-    return data[0];
+    return data as CategoryResponse;
 };
