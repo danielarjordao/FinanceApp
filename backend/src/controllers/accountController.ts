@@ -26,12 +26,14 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
             data: newAccount
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+		// Extrair da mensagem de erro de forma segura, garantindo que o tipo é tratado corretamente
+		const message = error instanceof Error ? error.message : 'Erro desconhecido';
 		// Se o Service lançou um "throw new Error", o catch apanha-o aqui
-        console.error('Erro na criação de conta:', error.message);
+        console.error('Erro na criação de conta:', message);
         res.status(400).json({
             status: 'error',
-            message: error.message
+            message: message
         });
     }
 };
