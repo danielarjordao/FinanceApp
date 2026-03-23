@@ -54,6 +54,21 @@ export const getCategories = async (profile_id: string): Promise<CategoryRespons
     return data as CategoryResponse[];
 };
 
+// Função para atualizar uma categoria existente.
+export const updateCategory = async (id: string, data: Partial<CategoryInput>): Promise<CategoryResponse> => {
+    const { data: category, error } = await supabase
+        .from('categories')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error)
+        throw new Error(error.message);
+    
+    return category as CategoryResponse;
+};
+
 // Função para deletar uma categoria (soft delete).
 export const deleteCategory = async (id: string): Promise<void> => {
     const { error } = await supabase

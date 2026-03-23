@@ -11,6 +11,10 @@ router.post('/', categoryController.createCategory);
 // URL: GET /api/v1/categories?profile_id=XXX
 router.get('/', categoryController.getCategories);
 
+// Rota PATCH: Atualiza os detalhes de uma categoria existente
+// URL: PATCH /api/v1/categories/:id
+router.patch('/:id', categoryController.updateCategory);
+
 // Rota DELETE: Deleta uma categoria (soft delete)
 // URL: DELETE /api/v1/categories/:id
 router.delete('/:id', categoryController.deleteCategory);

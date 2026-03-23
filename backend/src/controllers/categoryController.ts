@@ -39,6 +39,34 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
     }
 };
 
+// Controlador para atualizar os detalhes de uma categoria existente.
+export const updateCategory = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const body = req.body as Partial<CategoryInput>;
+
+        // Validação de Defesa do ID
+        if (typeof id !== 'string' || id.trim() === '') {
+            res.status(400).json({ status: 'error', message: 'Invalid category ID.' });
+            return;
+        }
+
+        const updatedCategory = await categoryService.updateCategory(id, body);
+        res.status(200).json({ status: 'success', data: updatedCategory });
+    } catch (error: unknown) {
+        let message = 'An unknown error occurred';
+
+        if (error instanceof Error) {
+            message = error.message;
+        } else if (error && typeof error === 'object' && 'message' in error) {
+            message = String(error.message);
+        }
+
+        console.error('[CategoryController Error]:', message);
+        res.status(400).json({ status: 'error', message });
+    }
+};
+
 // Controlador para listar as categorias de um perfil específico.
 export const getCategories = async (req: Request, res: Response): Promise<void> => {
     try {
