@@ -1,72 +1,128 @@
 import { supabase } from '../config/supabase.js';
 
-// A interface "TransactionInput" define a estrutura dos dados que a função "createTransactionRecord" espera receber.
-// Ela é usada para garantir que os dados enviados pelo Controller estão completos e corretos antes de tentar gravá-los no banco de dados.
-export interface TransactionInput {
+// --- INTERFACES ---
+export interface CreateTransactionDTO {
     account_id: string;
-    transfer_account_id?: string | null;
     category_id?: string | null;
-    type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
+    transfer_account_id?: string | null;
+    type: string;
     amount: number;
     date: string;
-    effective_date?: string;
     description?: string;
-    status?: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+    status?: string;
 }
 
-// Recebe os dados já com a garantia de que respeitam a Interface "TransactionInput"
-export const createTransactionRecord = async (transactionData: TransactionInput): Promise<TransactionInput> => {
-    // Desestruturação dos dados para facilitar a manipulação
-    // Constantes para os campos que não devem mudar durante a lógica de negócio, garantindo que não sejam reatribuídos acidentalmente
-    const {
-        account_id, type, amount, date, effective_date, description, status
-    } = transactionData;
+export interface TransactionResponse {
+    id: string;
+    account_id: string;
+    transfer_account_id: string | null;
+    category_id: string | null;
+    type: string;
+    amount: number;
+    date: string;
+    effective_date: string;
+    description: string | null;
+    status: string;
+    created_at: string;
+    updated_at: string;
+}
 
-    // Estas podem mudar durante a lógica abaixo, por isso ficam como 'let'
-    let { transfer_account_id, category_id } = transactionData;
+// --- FUNÇÕES AUXILIARES (SINGLE RESPONSIBILITY) ---
 
-    // Força o valor a ser sempre positivo (absoluto)
-    const safeAmount = Math.abs(Number(amount));
-
-    // Confirma que o tipo é válido e aplica regras de negócio específicas
-    // Transfer: exige transfer_account_id e não pode ter category_id
-    // Income/Expense: exige category_id e não pode ter transfer_account_id
+// Valida as regras de negócio antes de interagir com a base de dados.
+const validateTransactionLogic = (data: CreateTransactionDTO, type: string): void => {
     if (type === 'TRANSFER') {
-        if (!transfer_account_id)
-            throw new Error('Transferências exigem uma conta de destino.');
-        if (account_id === transfer_account_id)
-            throw new Error('A conta de origem e destino não podem ser a mesma.');
-        // Transferências não afetam os gráficos de categorias
-        category_id = null;
-    } else if (type === 'INCOME' || type === 'EXPENSE') {
-        if (!category_id) throw new Error('Receitas e Despesas exigem uma categoria.');
-        // Transações que não são transferências não têm conta de destino
-        transfer_account_id = null;
+        if (!data.transfer_account_id || data.account_id === data.transfer_account_id) {
+            throw new Error('Transfers require a destination account different from the origin.');
+        }
+        if (data.category_id) {
+            throw new Error('Transfers should not have an associated category.');
+        }
+    } else if (type === 'EXPENSE' || type === 'INCOME') {
+        if (data.transfer_account_id) {
+            throw new Error('Income and Expenses cannot have a destination account.');
+        }
+        if (!data.category_id) {
+            throw new Error('Income and Expenses require a category.');
+        }
     } else {
-        throw new Error('Tipo de transação inválido.');
+         throw new Error('Invalid transaction type. Allowed types: INCOME, EXPENSE, TRANSFER.');
+    }
+};
+
+// Atualiza o saldo de uma conta de forma matemática.
+const updateAccountBalance = async (accountId: string, amount: number, operation: 'CREDIT' | 'DEBIT'): Promise<void> => {
+    // Busca o saldo atual
+    const { data: account, error: accError } = await supabase
+        .from('accounts')
+        .select('balance')
+        .eq('id', accountId)
+        .single();
+
+    if (accError) throw new Error(`Failed to fetch account balance: ${accError.message}`);
+
+    let newBalance = Number(account.balance);
+
+    // Calcula o novo saldo (Soma se for CREDIT, subtrai se for DEBIT)
+    if (operation === 'CREDIT') {
+        newBalance += amount;
+    } else {
+        newBalance -= amount;
     }
 
-    // Comunicação com o Supabase
-    const { data, error } = await supabase
+    // Grava o novo valor na base de dados
+    const { error: updateError } = await supabase
+        .from('accounts')
+        .update({ balance: newBalance })
+        .eq('id', accountId);
+
+    if (updateError)
+        throw new Error(`Failed to update account balance: ${updateError.message}`);
+};
+
+// Orquestra a criação de uma transação, chamando as funções auxiliares
+export const createTransaction = async (data: CreateTransactionDTO): Promise<TransactionResponse> => {
+    // Normaliza os dados de entrada
+    const type = data.type?.toUpperCase() || '';
+    const amount = Math.abs(Number(data.amount));
+    const date = data.date;
+    const effective_date = data.date;
+
+    // Valida as regras de negócio
+    validateTransactionLogic(data, type);
+
+    // Insere a transação na base de dados
+    const { data: transaction, error: txError } = await supabase
         .from('transactions')
         .insert([{
-            account_id,
-            transfer_account_id,
-            category_id,
-            type,
-            amount: safeAmount,
-            date,
-            // Se effective_date não for fornecida, utiliza a data da transação como fallback inteligente
-            effective_date: effective_date || date,
-            description,
-            // Se o status não for fornecido, assume "COMPLETED" como padrão, pois a maioria das transações será concluída imediatamente
-            status: status || 'COMPLETED'
+            account_id: data.account_id,
+            transfer_account_id: data.transfer_account_id || null,
+            category_id: data.category_id || null,
+            type: type,
+            amount: amount,
+            date: date,
+            effective_date: effective_date,
+            description: data.description || null,
+            status: data.status || 'COMPLETED'
         }])
-        .select();
+        .select()
+        .single();
 
-    if (error)
-        throw error;
+    // Verifica se houve erro na inserção da transação
+    if (txError)
+        throw new Error(`Database error during transaction creation: ${txError.message}`);
 
-    // Retorna a transação recém-criada
-    return data[0];
+    // Atualiza o saldo da conta de origem
+    // Se for INCOME entra dinheiro (CREDIT). Se for EXPENSE ou TRANSFER, sai dinheiro (DEBIT).
+    const originOperation = type === 'INCOME' ? 'CREDIT' : 'DEBIT';
+    // Atualiza a conta de origem com a operação correta (CREDIT para INCOME, DEBIT para EXPENSE e TRANSFER)
+    await updateAccountBalance(data.account_id, amount, originOperation);
+
+    // Atualiza a conta de destino se for uma transferência (TRANSFER)
+    if (type === 'TRANSFER' && data.transfer_account_id) {
+        // Na conta de destino, a transferência faz sempre o dinheiro ENTRAR (CREDIT)
+        await updateAccountBalance(data.transfer_account_id, amount, 'CREDIT');
+    }
+
+    return transaction as TransactionResponse;
 };
