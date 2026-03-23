@@ -26,9 +26,15 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
             data: newCategory
         });
 
-    } catch (error: unknown) {
-		// Tratamento de erros, garantindo que a resposta seja consistente
-        const message = error instanceof Error ? error.message : 'Erro desconhecido';
+} catch (error: unknown) {
+        // Tenta extrair a mensagem do Supabase, mesmo que não seja um "Error" padrão
+        let message = 'Erro desconhecido';
+        if (error instanceof Error) {
+            message = error.message;
+        } else if (error && typeof error === 'object' && 'message' in error) {
+            message = String(error.message);
+        }
+
         res.status(400).json({ status: 'error', message });
     }
 };
