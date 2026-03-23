@@ -166,6 +166,7 @@ export const getTransactions = async (profileId: string): Promise<TransactionWit
             destination_account:transfer_account_id (name)
         `)
         .in('account_id', accountIds)
+        .is('deleted_at', null)
         .order('date', { ascending: false });
 
     if (error)
@@ -173,4 +174,45 @@ export const getTransactions = async (profileId: string): Promise<TransactionWit
 
     // Faz o cast para a interface estendida
     return data as TransactionWithDetails[];
+};
+
+// Delete condição: A função deleteTransaction deve ser responsável por realizar um soft delete de uma transação,
+// revertendo os saldos das contas envolvidas e marcando a transação como "CANCELLED".
+export const deleteTransaction = async (id: string): Promise<void> => {
+    // Busca a transação para saber o que reverter
+    const { data: transaction, error: fetchError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('id', id)
+        // Garante que não tenta deletar algo que já foi deletado (soft delete)
+        .is('deleted_at', null)
+        .single();
+
+    if (fetchError || !transaction)
+        throw new Error('Transaction not found or already deleted');
+
+    // Reverte o Saldo das Contas Envolvidas
+    const amount = Number(transaction.amount);
+    if (transaction.type === 'EXPENSE') {
+        await updateAccountBalance(transaction.account_id, amount, 'CREDIT');
+    } else if (transaction.type === 'INCOME') {
+        await updateAccountBalance(transaction.account_id, amount, 'DEBIT');
+    } else if (transaction.type === 'TRANSFER') {
+        await updateAccountBalance(transaction.account_id, amount, 'CREDIT');
+        if (transaction.transfer_account_id) {
+            await updateAccountBalance(transaction.transfer_account_id, amount, 'DEBIT');
+        }
+    }
+
+    // Soft Delete
+    const { error: deleteError } = await supabase
+        .from('transactions')
+        .update({
+            deleted_at: new Date().toISOString(),
+            status: 'CANCELLED'
+        })
+        .eq('id', id);
+
+    if (deleteError)
+        throw new Error(`Failed to soft delete: ${deleteError.message}`);
 };

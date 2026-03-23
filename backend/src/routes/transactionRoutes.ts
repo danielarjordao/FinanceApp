@@ -9,5 +9,8 @@ router.post('/', transactionController.createTransaction);
 // Rota GET: Lista todas as transações (ex: /api/v1/transactions?profileId=XXX)
 router.get('/', transactionController.getTransactions);
 
+// Rota DELETE com parâmetro de ID
+router.delete('/:id', transactionController.deleteTransaction);
+
 // Exporta o router para ser usado no server.ts
 export default router;

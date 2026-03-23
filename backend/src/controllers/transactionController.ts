@@ -71,3 +71,27 @@ export const getTransactions = async (req: Request, res: Response): Promise<void
     }
 };
 
+// Controller para deletar uma transação (soft delete).
+// Ele é responsável por receber a requisição, validar os dados de entrada, chamar o Service e retornar a resposta adequada.
+export const deleteTransaction = async (req: Request, res: Response): Promise<void> => {
+    try {
+        // O ID vem da URL: /transactions/:id
+        const { id } = req.params;
+
+        // Validação de Defesa
+        if (typeof id !== 'string' || id.trim() === '') {
+            res.status(400).json({ status: 'error', message: 'Invalid transaction ID.' });
+            return;
+        }
+
+        await transactionService.deleteTransaction(id);
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Transaction successfully removed (soft delete).'
+        });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Error deleting transaction';
+        res.status(400).json({ status: 'error', message });
+    }
+};
