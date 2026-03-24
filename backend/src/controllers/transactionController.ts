@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import * as transactionService from '../services/transactionService.js';
 import type { CreateTransactionDTO } from '../services/transactionService.js';
+import * as tagService from '../services/tagService.js';
 
 // Controller para criar uma transação. Ele é responsável por receber a requisição, validar os dados de entrada, chamar o Service e retornar a resposta adequada.
 export const createTransaction = async (req: Request, res: Response): Promise<void> => {
@@ -114,6 +115,32 @@ export const deleteTransaction = async (req: Request, res: Response): Promise<vo
         });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Error deleting transaction';
+        res.status(400).json({ status: 'error', message });
+    }
+};
+
+export const handleCreateTransaction = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { tags, ...transactionData } = req.body;
+
+        // Cria a transação (Responsabilidade do TransactionService)
+        const newTransaction = await transactionService.createTransaction(transactionData);
+
+        // Associa as tags, se existirem (Responsabilidade do TagService)
+        if (tags && Array.isArray(tags) && tags.length > 0) {
+            await tagService.linkTagsToTransaction(newTransaction.id, tags);
+        }
+
+        // Atualiza o saldo
+        await transactionService.updateAccountBalance(
+            transactionData.account_id,
+            transactionData.amount,
+            transactionData.type
+        );
+
+        res.status(201).json({ status: 'success', data: newTransaction });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
         res.status(400).json({ status: 'error', message });
     }
 };

@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import * as tagService from './tagService.js';
 
 // --- INTERFACES ---
 export interface CreateTransactionDTO {
@@ -10,6 +11,7 @@ export interface CreateTransactionDTO {
     date: string;
     description?: string;
     status?: string;
+    tags?: string[];
 }
 
 export interface TransactionResponse {
@@ -64,7 +66,7 @@ const validateTransactionLogic = (data: CreateTransactionDTO, type: string): voi
 };
 
 // Atualiza o saldo de uma conta de forma matemática.
-const updateAccountBalance = async (accountId: string, amount: number, operation: 'CREDIT' | 'DEBIT'): Promise<void> => {
+export const updateAccountBalance = async (accountId: string, amount: number, operation: 'CREDIT' | 'DEBIT'): Promise<void> => {
     // Busca o saldo atual
     const { data: account, error: accError } = await supabase
         .from('accounts')
@@ -126,13 +128,13 @@ const applyTransactionBalance = async (transaction: TransactionResponse): Promis
 // Post condição: A função createTransaction deve ser responsável por criar uma nova transação,
 // validar as regras de negócio, atualizar os saldos das contas envolvidas e retornar os dados da transação criada.
 export const createTransaction = async (data: CreateTransactionDTO): Promise<TransactionResponse> => {
-    // Normaliza os dados de entrada
+    // Normaliza e valida os dados de entrada
     const type = data.type?.toUpperCase() || '';
     const amount = Math.abs(Number(data.amount));
     const date = data.date;
     const effective_date = data.date;
 
-    // Valida as regras de negócio
+    // Valida as regras de negócio antes de interagir com a base de dados
     validateTransactionLogic(data, type);
 
     // Insere a transação na base de dados
@@ -152,19 +154,23 @@ export const createTransaction = async (data: CreateTransactionDTO): Promise<Tra
         .select()
         .single();
 
-    // Verifica se houve erro na inserção da transação
-    if (txError)
+    // Trata erros de banco de dados
+    if (txError) {
         throw new Error(`Database error during transaction creation: ${txError.message}`);
+    }
 
-    // Atualiza o saldo da conta de origem
-    // Se for INCOME entra dinheiro (CREDIT). Se for EXPENSE ou TRANSFER, sai dinheiro (DEBIT).
+    // Linka as tags à transação, se existirem
+    if (data.tags && Array.isArray(data.tags) && data.tags.length > 0) {
+        await tagService.linkTagsToTransaction(transaction.id, data.tags);
+    }
+
+    // Atualiza o saldo da conta de origem (e destino, se for transferência)
     const originOperation = type === 'INCOME' ? 'CREDIT' : 'DEBIT';
-    // Atualiza a conta de origem com a operação correta (CREDIT para INCOME, DEBIT para EXPENSE e TRANSFER)
     await updateAccountBalance(data.account_id, amount, originOperation);
 
-    // Atualiza a conta de destino se for uma transferência (TRANSFER)
+    // Aplica o impacto na conta de destino, se for transferência
     if (type === 'TRANSFER' && data.transfer_account_id) {
-        // Na conta de destino, a transferência faz sempre o dinheiro ENTRAR (CREDIT)
+        // Para a conta de destino, a operação é sempre o inverso da origem
         await updateAccountBalance(data.transfer_account_id, amount, 'CREDIT');
     }
 
@@ -193,7 +199,8 @@ export const getTransactions = async (profile_id: string): Promise<TransactionWi
             *,
             categories (name, icon),
             origin_account:account_id (name),
-            destination_account:transfer_account_id (name)
+            destination_account:transfer_account_id (name),
+            tags:transaction_tags( tag_id )
         `)
         .in('account_id', accountIds)
         .is('deleted_at', null)
