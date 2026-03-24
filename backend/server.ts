@@ -6,6 +6,7 @@ import transactionRoutes from './src/routes/transactionRoutes.js';
 import accountRoutes from './src/routes/accountRoutes.js';
 import categoryRoutes from './src/routes/categoryRoutes.js';
 import tagRoutes from './src/routes/tagRoutes.js';
+import installmentRoutes from './src/routes/installmentRoutes.js';
 
 // Instância do Express
 const app = express();
@@ -23,6 +24,7 @@ app.use('/api/v1/transactions', transactionRoutes);
 app.use('/api/v1/accounts', accountRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/tags', tagRoutes);
+app.use('/api/v1/installments', installmentRoutes);
 
 // Rota de saúde para verificar se a API está operacional
 app.get('/api/v1/health', (req: Request, res: Response) => {
