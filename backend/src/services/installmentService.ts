@@ -108,7 +108,7 @@ export const createInstallmentPlan = async (data: CreateInstallmentDTO): Promise
 };
 
 // GET: Listar todos os planos de um perfil, incluindo as suas transações
-export const getInstallmentPlans = async (profileId: string): Promise<InstallmentPlanResponse[]> => {
+export const readInstallmentPlans = async (profileId: string): Promise<InstallmentPlanResponse[]> => {
     const { data, error } = await supabase
         .from('installment_plans')
         // O Supabase faz o JOIN automático com a tabela transactions
