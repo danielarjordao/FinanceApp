@@ -6,8 +6,8 @@ export interface CategoryInput {
     icon?: string;
     profile_id: string;
     type: 'INCOME' | 'EXPENSE';
+    parent_id?: string;
 }
-
 // Interface para o que a base de dados devolve
 export interface CategoryResponse extends CategoryInput {
     id: string;
@@ -58,14 +58,14 @@ export const getCategories = async (profile_id: string): Promise<CategoryRespons
 export const updateCategory = async (id: string, data: Partial<CategoryInput>): Promise<CategoryResponse> => {
     const { data: category, error } = await supabase
         .from('categories')
-        .update(data)
+        .update({ ...data, updated_at: new Date().toISOString() })
         .eq('id', id)
         .select()
         .single();
 
     if (error)
         throw new Error(error.message);
-    
+
     return category as CategoryResponse;
 };
 
