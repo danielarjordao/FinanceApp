@@ -1,4 +1,4 @@
-# Documento 4: Planeamento Estratégico Passo a Passo (Atualizado)
+# Documento 4: Planeamento Estratégico Passo a Passo
 
 ## Fase 1: Backend e Base de Dados (Sessões 1 a 4)
 
