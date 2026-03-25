@@ -43,7 +43,7 @@ export const createBudget = async (data: CreateBudgetDTO): Promise<BudgetRespons
     return budget as BudgetResponse;
 };
 
-export const getBudgetsByMonth = async (profileId: string, monthDate: string): Promise<Array<BudgetResponse & { categories: { name: string } }>> => {
+export const readBudgetsByMonth = async (profileId: string, monthDate: string): Promise<Array<BudgetResponse & { categories: { name: string } }>> => {
     // monthDate deve ser o primeiro dia do mês no formato 'YYYY-MM-DD'
     const { data: budgets, error } = await supabase
         .from('budgets')
