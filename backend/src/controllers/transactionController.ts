@@ -33,7 +33,7 @@ export const createTransaction = async (req: Request, res: Response): Promise<vo
 
 // Controller para obter as transações de um perfil específico.
 // Ele é responsável por receber a requisição, validar os dados de entrada, chamar o Service e retornar a resposta adequada.
-export const getTransactions = async (req: Request, res: Response): Promise<void> => {
+export const readTransactions = async (req: Request, res: Response): Promise<void> => {
     try {
         const { profile_id } = req.query;
 
@@ -42,7 +42,7 @@ export const getTransactions = async (req: Request, res: Response): Promise<void
             return;
         }
 
-        const transactions = await transactionService.getTransactions(profile_id as string);
+        const transactions = await transactionService.readTransactions(profile_id as string);
 
         res.status(200).json({
             status: 'success',
