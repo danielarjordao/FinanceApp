@@ -57,5 +57,3 @@
 **Dia 07/04 (Terça-feira) - Entrega e Apresentação:**
 
 * **Manhã:** Submissão final do código e defesa técnica presencial.
-
-teste
