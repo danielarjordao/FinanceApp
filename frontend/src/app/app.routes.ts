@@ -1,18 +1,39 @@
 import { Routes } from '@angular/router';
-import { } from './components/login/login';
-import { } from './components/dashboard/dashboard';
-import { } from './components/transactions/transactions';
-import { } from './components/settings/settings';
+
+// Importações (o VS Code pode fazer auto-import disto)
+import { Login } from './components/login/login';
+import { Dashboard } from './components/dashboard/dashboard';
+import { Transactions } from './components/transactions/transactions';
+import { Accounts} from './components/accounts/accounts';
+import { Past12Months } from './components/past-12-months/past-12-months';
+import { Forecast } from './components/forecast/forecast';
+import { Goals } from './components/goals/goals';
+import { Categories } from './components/categories/categories';
+import { Budgets } from './components/budgets/budgets';
+import { Settings } from './components/settings/settings';
+import { Terms } from './components/terms/terms';
 
 export const routes: Routes = [
-  // Rota inicial: Redireciona para o login (ou dashboard se já logado)
-  { path: '', redirectTo: 'login', pathMatch: 'full' },
+  // --- Fluxo de Autenticação ---
+  { path: 'auth/login', component: Login },
 
-  { path: 'login', title: 'Login | Finanças' },
-  { path: 'dashboard', title: 'Dashboard | Finanças' },
-  { path: 'transactions', title: 'Transações | Finanças' },
-  { path: 'settings', title: 'Configurações | Finanças' },
+  // --- Fluxo Principal (Com Sidebar) ---
+  { path: 'dashboard', component: Dashboard },
+  { path: 'transactions', component: Transactions },
 
-  // Rota "Wildcard" para páginas não encontradas
-  { path: '**', redirectTo: 'login' }
+  { path: 'accounts', component: Accounts },
+
+  { path: 'past-12-months', component: Past12Months },
+  { path: 'forecast', component: Forecast },
+  { path: 'goals', component: Goals },
+  { path: 'categories', component: Categories },
+  { path: 'budgets', component: Budgets },
+
+  { path: 'settings', component: Settings },
+
+  { path: 'terms', component: Terms },
+
+  // --- Redirecionamentos ---
+  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+  { path: '**', redirectTo: 'auth/login' }
 ];

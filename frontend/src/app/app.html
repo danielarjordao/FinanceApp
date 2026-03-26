@@ -1,3 +1,24 @@
-<main>
-  <router-outlet></router-outlet>
-</main>
+<div class="app-container">
+
+<!-- Se o utilizador estiver autenticado-->
+@if (showSidebar) {
+  <app-header></app-header>
+
+  <div class="layout-body">
+    <app-sidebar></app-sidebar>
+
+    <div class="content-area">
+      <main class="main-content">
+        <router-outlet></router-outlet>
+      </main>
+      <app-footer></app-footer>
+    </div>
+  </div>
+} @else {
+  <!-- Se for a página de Login -->
+  <main class="auth-area">
+    <router-outlet></router-outlet>
+  </main>
+}
+
+</div>
