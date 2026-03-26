@@ -1,6 +1,6 @@
 .main-content {
   flex-grow: 1;
-  padding: 32px; 
+  padding: 32px;
   display: flex;
   flex-direction: column;
 }
@@ -36,4 +36,23 @@
   align-items: center;
   justify-content: center;
   background-color: var(--muted);
+}
+
+/* Responsividade */
+@media (max-width: 850px) {
+  /* Desliga a barra lateral completamente */
+  app-sidebar {
+    display: none;
+  }
+
+  /* A área de conteúdo ocupa os 100% da largura (remove os 80px da margem) */
+  .content-area {
+    margin-left: 0;
+  }
+
+  /* Reduz o padding interno */
+  .main-content {
+    padding: 16px;
+  }
+
 }
