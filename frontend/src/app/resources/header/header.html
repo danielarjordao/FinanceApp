@@ -1,0 +1,88 @@
+<header class="top-header">
+
+  <div class="header-left">
+    <div class="logo">
+      <span class="material-symbols-outlined icon-logo">token</span>
+      <h2 class="logo-text">App<span>Finanças</span></h2>
+    </div>
+
+    <!-- Divisória visual entre o logo e a saudação -->
+    <div class="divider"></div>
+
+    <div class="header-greeting">
+      <h1 class="greeting">{{ userName | greeting }}</h1>
+      <span class="current-date">{{ currentDate | date:'EEEE, MMMM d, y' }}</span>
+    </div>
+  </div>
+
+  <div class="header-right">
+
+    <button class="btn-primary">
+      <span class="material-symbols-outlined">add</span>
+      New Transaction
+    </button>
+
+    <div class="divider"></div>
+
+<!-- Seletor de Perfis (Agora a usar as classes padronizadas) -->
+    <div class="dropdown-container">
+      <button class="dropdown-trigger" (click)="toggleProfileMenu($event)">
+        <span class="material-symbols-outlined icon-small">account_tree</span>
+        <span class="trigger-text">{{ activeProfile }}</span>
+        <span class="material-symbols-outlined icon-small">expand_more</span>
+      </button>
+
+      @if (isProfileMenuOpen) {
+        <div class="dropdown-menu glass-strong">
+          <div class="dropdown-header">
+            <span class="full-name">Change Profile</span>
+          </div>
+          <div class="dropdown-divider"></div>
+
+          @for (profile of availableProfiles; track profile) {
+            <button
+              class="dropdown-item"
+              (click)="selectProfile(profile)"
+              [class.active-item]="profile === activeProfile">
+
+              <span class="material-symbols-outlined">
+                {{ profile === activeProfile ? 'check_circle' : 'radio_button_unchecked' }}
+              </span>
+              <span>{{ profile }}</span>
+
+            </button>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="user-dropdown-container">
+      <button class="avatar-btn" (click)="toggleUserMenu($event)">
+        {{ userInitial }}
+      </button>
+
+      @if (isUserMenuOpen) {
+        <div class="dropdown-menu glass-strong">
+          <div class="dropdown-header">
+            <span class="full-name">{{ userFullName }}</span>
+            <span class="email">{{ userEmail }}</span>
+          </div>
+          <div class="dropdown-divider"></div>
+
+          <a routerLink="/profile" class="dropdown-item">
+            <span class="material-symbols-outlined">person</span> My Profile
+          </a>
+          <a routerLink="/settings" class="dropdown-item">
+            <span class="material-symbols-outlined">tune</span> Preferences
+          </a>
+
+          <div class="dropdown-divider"></div>
+          <a routerLink="/auth/login" class="dropdown-item logout">
+            <span class="material-symbols-outlined">logout</span> Sign Out
+          </a>
+        </div>
+      }
+    </div>
+
+  </div>
+</header>
