@@ -3,6 +3,7 @@ import { RouterModule } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
 import { GreetingPipe } from '../../utils/pipes/greeting-pipe';
 import { Logo } from '../logo/logo';
+import { Auth } from '../../services/auth';
 
 @Component({
   selector: 'app-header',
@@ -12,6 +13,7 @@ import { Logo } from '../logo/logo';
   styleUrls: ['./header.css']
 })
 export class Header {
+  Auth = Auth; // Para usar os métodos de autenticação no template
   // Dados do utilizador
   // TODO: Estes dados devem ser obtidos a partir de um serviço de autenticação real
   userName: string = 'Daniela';
@@ -83,5 +85,13 @@ export class Header {
     this.isProfileMenuOpen = false;
     this.isUserMenuOpen = false;
     this.isNavMenuOpen = false;
+  }
+
+  logout() {
+    const authService = new Auth();
+    authService.signOut().then(() => {
+      // Redireciona para a página de login após o logout
+      window.location.href = '/auth/login';
+    });
   }
 }
