@@ -13,11 +13,10 @@ import { Auth } from '../../services/auth';
 export class Profile implements OnInit {
   private authService = inject(Auth);
 
-  // Initialize the form
+  // Formulário inicializado
   profileForm = new FormGroup({
-    firstName: new FormControl('', [Validators.required]),
-    lastName: new FormControl('', [Validators.required]),
-    // Password is not required for update, only validated if the user types something
+    firstName: new FormControl('', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]),
+    lastName: new FormControl('', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]),
     password: new FormControl('', [Validators.minLength(6)])
   });
 
@@ -25,8 +24,10 @@ export class Profile implements OnInit {
   errorMessage = '';
   isLoading = false;
 
+  // Flag para controlar o estado do formulário
+  isReadOnly = true;
+
   async ngOnInit(): Promise<void> {
-    // Load current user data and patch the form
     const user = await this.authService.getCurrentUser();
 
     if (user && user.user_metadata) {
@@ -34,7 +35,29 @@ export class Profile implements OnInit {
         firstName: user.user_metadata['first_name'] || '',
         lastName: user.user_metadata['last_name'] || ''
       });
+
+      // Tranca o formulário no carregamento inicial
+      this.profileForm.disable();
     }
+  }
+
+  // Método para destrancar o formulário
+  enableEditing(): void {
+    this.isReadOnly = false;
+    this.profileForm.enable();
+    this.successMessage = '';
+    this.errorMessage = '';
+  }
+
+  // Método para cancelar e voltar a trancar
+  cancelEditing(): void {
+    this.isReadOnly = true;
+    this.profileForm.disable();
+    this.successMessage = '';
+    this.errorMessage = '';
+
+    // Recarrega os dados do utilizador para desfazer alterações
+    this.ngOnInit();
   }
 
   async onSubmit(): Promise<void> {
@@ -47,9 +70,10 @@ export class Profile implements OnInit {
     }
 
     this.isLoading = true;
+
+    // Usa getRawValue para garantir que apanha os valores mesmo se houver campos desativados
     const { firstName, lastName, password } = this.profileForm.getRawValue();
 
-    // Only send the password to the update function if the field is not empty
     const pwdToUpdate = password ? password : undefined;
 
     const result = await this.authService.updateProfile(
@@ -60,7 +84,11 @@ export class Profile implements OnInit {
 
     if (result.success) {
       this.successMessage = 'Profile updated successfully!';
-      this.profileForm.get('password')?.reset(); // Clear the password field for security
+      this.profileForm.get('password')?.reset();
+
+      // Volta a trancar o formulário após guardar com sucesso
+      this.isReadOnly = true;
+      this.profileForm.disable();
     } else {
       this.errorMessage = result.error || 'Failed to update profile.';
     }
