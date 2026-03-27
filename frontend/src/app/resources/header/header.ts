@@ -2,11 +2,12 @@ import { Component, HostListener } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
 import { GreetingPipe } from '../../utils/pipes/greeting-pipe';
+import { Logo } from '../logo/logo';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [RouterModule, CommonModule, DatePipe, GreetingPipe],
+  imports: [RouterModule, CommonModule, DatePipe, GreetingPipe, Logo],
   templateUrl: './header.html',
   styleUrls: ['./header.css']
 })
