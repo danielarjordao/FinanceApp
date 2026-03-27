@@ -14,6 +14,8 @@ import { Settings } from './components/settings/settings';
 import { Terms } from './components/terms/terms';
 import { authGuard } from './guards/auth-guard';
 import { guestGuard } from './guards/guest-guard';
+import { Profile } from './components/profile/profile';
+import { TransactionForm } from './components/transaction-form/transaction-form';
 
 export const routes: Routes = [
   // --- Fluxo de Autenticação ---
@@ -22,6 +24,8 @@ export const routes: Routes = [
   // --- Fluxo Principal (Com Sidebar) ---
   { path: 'dashboard', component: Dashboard, canActivate: [authGuard] },
   { path: 'transactions', component: Transactions, canActivate: [authGuard] },
+  { path: 'transactions/new', component: TransactionForm, canActivate: [authGuard] },
+  { path: 'transactions/edit/:id', component: TransactionForm, canActivate: [authGuard] },
 
   { path: 'accounts', component: Accounts, canActivate: [authGuard] },
 
@@ -31,11 +35,12 @@ export const routes: Routes = [
   { path: 'categories', component: Categories, canActivate: [authGuard] },
   { path: 'budgets', component: Budgets, canActivate: [authGuard] },
 
+  { path: 'profile', component: Profile, canActivate: [authGuard] },
   { path: 'settings', component: Settings, canActivate: [authGuard] },
 
   { path: 'terms', component: Terms },
 
   // --- Redirecionamentos ---
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-  { path: '**', redirectTo: 'auth/login' }
+  { path: '', redirectTo: '/auth/login', pathMatch: 'full' },
+  { path: '**', redirectTo: '/auth/login' }
 ];
