@@ -2,21 +2,35 @@ import { Component, HostListener } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
 import { GreetingPipe } from '../../utils/pipes/greeting-pipe';
+import { Logo } from '../logo/logo';
+import { Auth } from '../../services/auth';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [RouterModule, CommonModule, DatePipe, GreetingPipe],
+  imports: [RouterModule, CommonModule, DatePipe, GreetingPipe, Logo],
   templateUrl: './header.html',
   styleUrls: ['./header.css']
 })
 export class Header {
-  // Dados do utilizador
-  // TODO: Estes dados devem ser obtidos a partir de um serviço de autenticação real
-  userName: string = 'Daniela';
-  userFullName: string = 'Daniela Jordão';
-  userEmail: string = 'appfinancas.suporte@gmail.com';
-  userInitial: string = this.userName.charAt(0).toUpperCase();
+  Auth = Auth; // Para usar os métodos de autenticação no template
+  userName: string = '';
+  userSurname: string = '';
+  userInitials: string = '';
+  userEmail: string = '';
+
+
+  async ngOnInit() {
+    // Verifica se o utilizador está logado e, se não estiver, redireciona para a página de login
+    const authService = new Auth();
+    const user = await authService.getCurrentUser();
+    if (user) {
+      this.userName = user.user_metadata['first_name'] || '';
+      this.userSurname = user.user_metadata['last_name'] || '';
+      this.userEmail = user.email || '';
+      this.userInitials = `${this.userName.charAt(0)}${this.userSurname.charAt(0)}`;
+    }
+  }
 
   // Data atual para exibir no header
   currentDate = new Date();
@@ -82,5 +96,13 @@ export class Header {
     this.isProfileMenuOpen = false;
     this.isUserMenuOpen = false;
     this.isNavMenuOpen = false;
+  }
+
+  logout() {
+    const authService = new Auth();
+    authService.signOut().then(() => {
+      // Redireciona para a página de login após o logout
+      window.location.href = '/auth/login';
+    });
   }
 }

@@ -1,11 +1,7 @@
 <header class="top-header">
 
   <div class="header-left">
-    <div class="logo">
-      <span class="material-symbols-outlined icon-logo">token</span>
-      <h2 class="logo-text"><span>Finance</span>App</h2>
-    </div>
-
+    <app-logo></app-logo>
     <div class="dropdown-container mobile-nav-only">
       <button class="icon-btn" (click)="toggleNavMenu($event)">
         <span class="material-symbols-outlined">menu</span>
@@ -90,7 +86,7 @@
       }
     </div>
 
-    <button class="btn-primary">
+    <button class="btn-primary" routerLink="/transactions/new">
       <span class="material-symbols-outlined">add</span>
       <span class="btn-text">New Transaction</span>
     </button>
@@ -105,13 +101,13 @@
 
     <div class="user-dropdown-container">
       <button class="avatar-btn" (click)="toggleUserMenu($event)">
-        {{ userInitial }}
+        {{ userInitials }}
       </button>
 
       @if (isUserMenuOpen) {
         <div class="dropdown-menu glass-strong">
           <div class="dropdown-header">
-            <span class="full-name">{{ userFullName }}</span>
+            <span class="full-name">{{ userName + ' ' + userSurname }}</span>
             <span class="email">{{ userEmail }}</span>
           </div>
           <div class="dropdown-divider"></div>
@@ -124,8 +120,8 @@
           </a>
 
           <div class="dropdown-divider"></div>
-          <a routerLink="/auth/login" class="dropdown-item logout">
-            <span class="material-symbols-outlined">logout</span> Sign Out
+          <a (click)="logout()" class="dropdown-item">
+            <span class="material-symbols-outlined">logout</span> Logout
           </a>
         </div>
       }
