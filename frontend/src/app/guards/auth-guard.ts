@@ -9,11 +9,11 @@ export const authGuard: CanActivateFn = async (route, state) => {
   // Verifica se o utilizador está logado no Supabase
   const user = await authService.getCurrentUser();
 
-  if (user) {
-    return true;
-  } else {
+  console.log('AuthGuard check - user:', user);
+
+  if (!user) {
     // Não está logado, rredireciona para a página de login
-    router.navigate(['/auth/login']);
-    return false;
+    return router.createUrlTree(['/auth/login']);
   }
+  return true;
 };
