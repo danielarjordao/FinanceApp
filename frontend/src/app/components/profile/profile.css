@@ -1,8 +1,8 @@
 .page-container {
   padding: 32px;
   max-width: 800px;
-  justify-content: center;
-  align-items: center;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .profile-card {
@@ -118,16 +118,6 @@ h2 {
   cursor: not-allowed;
 }
 
-/* Responsividade */
-@media (max-width: 600px) {
-  .name-row {
-    grid-template-columns: 1fr;
-  }
-  .page-container {
-    padding: 16px;
-  }
-}
-
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -159,4 +149,14 @@ h2 {
   color: var(--muted-foreground);
   cursor: not-allowed;
   border-color: transparent;
+}
+
+/* Responsividade */
+@media (max-width: 600px) {
+  .name-row {
+    grid-template-columns: 1fr;
+  }
+  .page-container {
+    padding: 16px;
+  }
 }
