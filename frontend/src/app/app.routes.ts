@@ -14,7 +14,7 @@ import { Settings } from './components/settings/settings';
 import { Terms } from './components/terms/terms';
 import { authGuard } from './guards/auth-guard';
 import { guestGuard } from './guards/guest-guard';
-import { Profile } from './components/profile/profile';
+import { Profile} from './components/profile/profile';
 import { TransactionForm } from './components/transaction-form/transaction-form';
 
 export const routes: Routes = [
