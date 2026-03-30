@@ -20,6 +20,7 @@ export class Transactions implements OnInit {
   Math = Math; // Para usar funções matemáticas no template, como Math.ceil para paginação
   isLoading: boolean = true;
   errorMessage: string = '';
+  isModalOpen: boolean = false;
 
   // Formulário para os filtros de transações
   filterForm = new FormGroup({
@@ -128,5 +129,10 @@ export class Transactions implements OnInit {
     // Limpeza
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  }
+
+  // Método para abrir o formulário de nova transação
+  openNewTransactionForm(): void {
+    window.location.href = '/transactions/new'; // Redireciona para a página de criação de transação
   }
 }

@@ -65,5 +65,16 @@ export class TransactionService {
     );
   }
 
-  // Métodos adicionais para criar, atualizar e deletar transações podem ser implementados aqui seguindo o mesmo padrão de autenticação
+  createTransaction(data: any): Observable<any> {
+    return from(this.authService.getAccessToken()).pipe(
+      switchMap(token => {
+        let headers = new HttpHeaders();
+        if (token) {
+          headers = headers.set('Authorization', `Bearer ${token}`);
+        }
+        return this.http.post(this.apiUrl, data, { headers });
+      })
+    );
+  }
+  // Métodos adicionais para atualizar e deletar transações podem ser implementados aqui seguindo o mesmo padrão de autenticação
 }
