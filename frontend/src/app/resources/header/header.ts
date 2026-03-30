@@ -4,6 +4,8 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { GreetingPipe } from '../../utils/pipes/greeting-pipe';
 import { Logo } from '../logo/logo';
 import { Auth } from '../../services/auth';
+import { inject } from '@angular/core';
+import { User } from '@supabase/supabase-js';
 
 @Component({
   selector: 'app-header',
@@ -18,18 +20,27 @@ export class Header {
   userSurname: string = '';
   userInitials: string = '';
   userEmail: string = '';
+  private authService = inject(Auth);
 
 
-  async ngOnInit() {
-    // Verifica se o utilizador está logado e, se não estiver, redireciona para a página de login
-    const authService = new Auth();
-    const user = await authService.getCurrentUser();
-    if (user) {
-      this.userName = user.user_metadata['first_name'] || '';
-      this.userSurname = user.user_metadata['last_name'] || '';
-      this.userEmail = user.email || '';
-      this.userInitials = `${this.userName.charAt(0)}${this.userSurname.charAt(0)}`;
-    }
+  ngOnInit() {
+    // Obter o utilizador atual do serviço de autenticação e atualizar o estado do header
+    this.authService.getCurrentUser().then((user: User | null) => {
+      if (user) {
+        this.authService.updateUserState(user);
+      }
+    });
+
+    // Fica à escuta de mudanças no estado do utilizador para atualizar o header em tempo real
+    this.authService.currentUser$.subscribe((user: User | null) => {
+      // Atualiza os dados do utilizador no header sempre que houver uma mudança (login, logout, atualização de perfil)
+      if (user && user.user_metadata) {
+        this.userName = user.user_metadata['first_name'] || '';
+        this.userSurname = user.user_metadata['last_name'] || '';
+        this.userEmail = user.email || '';
+        this.userInitials = `${this.userName.charAt(0)}${this.userSurname.charAt(0)}`;
+      }
+    });
   }
 
   // Data atual para exibir no header
@@ -102,6 +113,7 @@ export class Header {
     const authService = new Auth();
     authService.signOut().then(() => {
       // Redireciona para a página de login após o logout
+      this.authService.updateUserState(null); // Limpa o estado do utilizador
       window.location.href = '/auth/login';
     });
   }
