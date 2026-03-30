@@ -2,7 +2,6 @@ import { supabase } from '../config/supabase.js';
 import * as tagService from './tagService.js';
 import { updateAccountBalance } from './accountService.js';
 
-// --- INTERFACES ---
 export interface CreateTransactionDTO {
     account_id: string;
     category_id?: string | null;
@@ -36,6 +35,7 @@ export interface TransactionFilters {
     type?: string;
     categoryId?: string;
     search?: string;
+    tagId?: string;
     page?: number;
     limit?: number;
     sortBy?: string;
@@ -43,44 +43,39 @@ export interface TransactionFilters {
 }
 
 export interface TransactionWithDetails extends TransactionResponse {
-    categories: {
-        name: string;
-        icon: string;
-    } | null;
-    origin_account: {
-        name: string;
-    } | null;
-    destination_account: {
-        name: string;
-    } | null;
+    categories: { name: string; icon: string; } | null;
+    origin_account: { name: string; } | null;
+    destination_account: { name: string; } | null;
 }
 
-// --- FUNÇÕES AUXILIARES (SINGLE RESPONSIBILITY) ---
+// FUNÇÕES AUXILIARES
 
-// Valida as regras de negócio antes de interagir com a base de dados.
-const validateTransactionLogic = (data: CreateTransactionDTO, type: string): void => {
+// Valida as regras de negócio de uma transação (Fail-Fast).
+// Lança um erro imediatamente se as regras financeiras forem violadas.
+const validateTransactionLogic = (data: Partial<CreateTransactionDTO>, type: string): void => {
     if (type === 'TRANSFER') {
         if (!data.transfer_account_id || data.account_id === data.transfer_account_id) {
-            throw new Error('Transfers require a destination account different from the origin.');
+            throw new Error('Transfers require a valid destination account different from the origin account.');
         }
         if (data.category_id) {
-            throw new Error('Transfers should not have an associated category.');
+            throw new Error('Transfers should not have a category.');
         }
     } else if (type === 'EXPENSE' || type === 'INCOME') {
         if (data.transfer_account_id) {
-            throw new Error('Income and Expenses cannot have a destination account.');
+            throw new Error('Incomes and Expenses should not have a transfer account.');
         }
         if (!data.category_id) {
-            throw new Error('Income and Expenses require a category.');
+            throw new Error('Incomes and Expenses require a category.');
         }
     } else {
-         throw new Error('Invalid transaction type. Allowed types: INCOME, EXPENSE, TRANSFER.');
+        throw new Error('Invalid transaction type. Must be INCOME, EXPENSE, or TRANSFER.');
     }
 };
 
-// Auxiliar: Reverte o impacto de uma transação no saldo
+// Desfaz o impacto de uma transação no saldo das contas envolvidas.
 const revertTransactionBalance = async (transaction: TransactionResponse): Promise<void> => {
     const amount = Number(transaction.amount);
+
     if (transaction.type === 'EXPENSE') {
         await updateAccountBalance(transaction.account_id, amount, 'CREDIT');
     } else if (transaction.type === 'INCOME') {
@@ -93,9 +88,10 @@ const revertTransactionBalance = async (transaction: TransactionResponse): Promi
     }
 };
 
-// Auxiliar: Aplica o impacto de uma transação no saldo
+// Aplica o impacto de uma nova transação no saldo das contas envolvidas.
 const applyTransactionBalance = async (transaction: TransactionResponse): Promise<void> => {
     const amount = Number(transaction.amount);
+
     if (transaction.type === 'EXPENSE') {
         await updateAccountBalance(transaction.account_id, amount, 'DEBIT');
     } else if (transaction.type === 'INCOME') {
@@ -108,19 +104,17 @@ const applyTransactionBalance = async (transaction: TransactionResponse): Promis
     }
 };
 
-// Post condição: A função createTransaction deve ser responsável por criar uma nova transação,
-// validar as regras de negócio, atualizar os saldos das contas envolvidas e retornar os dados da transação criada.
+// SERVIÇOS PRINCIPAIS (CRUD)
+
+// Cria uma nova transação, valida regras e atualiza os saldos.
 export const createTransaction = async (data: CreateTransactionDTO): Promise<TransactionResponse> => {
-    // Normaliza e valida os dados de entrada
     const type = data.type?.toUpperCase() || '';
     const amount = Math.abs(Number(data.amount));
-    const date = data.date;
-    const effective_date = data.date;
 
-    // Valida as regras de negócio antes de interagir com a base de dados
+    // Validação de regras de negócio
     validateTransactionLogic(data, type);
 
-    // Insere a transação na base de dados
+    // Inserção na base de dados
     const { data: transaction, error: txError } = await supabase
         .from('transactions')
         .insert([{
@@ -129,58 +123,49 @@ export const createTransaction = async (data: CreateTransactionDTO): Promise<Tra
             category_id: data.category_id || null,
             type: type,
             amount: amount,
-            date: date,
-            effective_date: effective_date,
+            date: data.date,
+            effective_date: data.date,
             description: data.description || null,
             status: data.status || 'COMPLETED'
         }])
         .select()
         .single();
 
-    // Trata erros de banco de dados
-    if (txError) {
-        throw new Error(`Database error during transaction creation: ${txError.message}`);
-    }
+    if (txError) throw new Error(`Failed to create transaction: ${txError.message}`);
 
-    // Linka as tags à transação, se existirem
+    // Associação de Tags (se existirem)
     if (data.tags && Array.isArray(data.tags) && data.tags.length > 0) {
         await tagService.linkTagsToTransaction(transaction.id, data.tags);
     }
 
-    // Atualiza o saldo da conta de origem (e destino, se for transferência)
-    const originOperation = type === 'INCOME' ? 'CREDIT' : 'DEBIT';
-    await updateAccountBalance(data.account_id, amount, originOperation);
-
-    // Aplica o impacto na conta de destino, se for transferência
-    if (type === 'TRANSFER' && data.transfer_account_id) {
-        // Para a conta de destino, a operação é sempre o inverso da origem
-        await updateAccountBalance(data.transfer_account_id, amount, 'CREDIT');
-    }
+    // Atualização de Saldos
+    await applyTransactionBalance(transaction as TransactionResponse);
 
     return transaction as TransactionResponse;
 };
 
-// Get condição: A função readTransactions deve ser responsável por retornar as transações de um perfil específico,
-// incluindo os nomes das categorias e contas associadas.
+// Retorna as transações de um perfil com paginação e filtros detalhados.
 export const readTransactions = async (profile_id: string, filters?: TransactionFilters): Promise<{ data: TransactionWithDetails[]; totalCount: number }> => {
-    // Busca as contas do perfil
+
+    // Busca os IDs das contas pertencentes ao perfil
     const { data: accounts, error: accError } = await supabase
         .from('accounts')
         .select('id')
         .eq('profile_id', profile_id);
 
-    if (accError)
-        throw new Error(`Error fetching profile accounts: ${accError.message}`);
+    if (accError) throw new Error(`Failed to fetch accounts for profile: ${accError.message}`);
 
-    // Extrai os IDs das contas para usar na consulta das transações
-    const accountIds = accounts.map(acc => acc.id);
+    const accountIds = accounts?.map(acc => acc.id) || [];
 
-    if (accountIds.length === 0) {
-        // Se o perfil não tiver contas, retorna um array vazio
-        return { data: [], totalCount: 0 };
-    }
+    // Cláusula de Guarda (Early Return): Sem contas, não há transações
+    if (accountIds.length === 0) return { data: [], totalCount: 0 };
 
-    // Busca as transações
+    // Constrói a Query base com relacionamentos
+    // O !inner força o Supabase a filtrar a transação caso pesquise por uma Tag específica
+    const tagQuery = filters?.tagId
+        ? 'transaction_tags!inner( tags(id, name, color) )'
+        : 'transaction_tags( tags(id, name, color) )';
+
     let query = supabase
         .from('transactions')
         .select(`
@@ -188,18 +173,20 @@ export const readTransactions = async (profile_id: string, filters?: Transaction
             categories (name, icon),
             origin_account:account_id (name),
             destination_account:transfer_account_id (name),
-            tags:transaction_tags( tag_id )
+            ${tagQuery}
         `, { count: 'exact' })
         .in('account_id', accountIds)
         .is('deleted_at', null);
 
-    // Aplica os filtros opcionais
-    if (filters?.type) {
-        query = query.eq('type', filters.type);
+    // Aplicação Dinâmica de Filtros
+    if (filters?.type) query = query.eq('type', filters.type);
+    if (filters?.categoryId) query = query.eq('category_id', filters.categoryId);
+    if (filters?.search) query = query.ilike('description', `%${filters.search}%`);
+
+    if (filters?.tagId) {
+        query = query.eq('transaction_tags.tag_id', filters.tagId);
     }
-    if (filters?.categoryId) {
-        query = query.eq('category_id', filters.categoryId);
-    }
+
     if (filters?.month && filters?.year) {
         const monthIndex = filters.month - 1;
         const startDate = new Date(filters.year, monthIndex, 1).toISOString();
@@ -207,49 +194,45 @@ export const readTransactions = async (profile_id: string, filters?: Transaction
         query = query.gte('date', startDate).lte('date', endDate);
     }
 
-    if (filters?.search) {
-        query = query.ilike('description', `%${filters.search}%`);
-    }
-
+    // Ordenação e Paginação
     const sortBy = filters?.sortBy || 'date';
     const sortOrder = filters?.sortOrder || 'desc';
     query = query.order(sortBy, { ascending: sortOrder === 'asc' });
 
-    // Paginação
     const page = filters?.page || 1;
     const limit = filters?.limit || 20;
     const offset = (page - 1) * limit;
     query = query.range(offset, offset + limit - 1);
 
+    // Execução
     const { data, error: txError, count } = await query;
+    if (txError) throw new Error(`Failed to fetch transactions: ${txError.message}`);
 
-    if (txError)
-        throw new Error(`Error fetching transactions: ${txError.message}`);
-
-    // Faz o cast para a interface estendida
     return {
         data: data as TransactionWithDetails[],
         totalCount: count || 0
     };
 };
 
-// Atualiza os detalhes de uma transação existente, garantindo que as regras de negócio sejam respeitadas e que os saldos das contas sejam ajustados corretamente.
+// Atualiza uma transação, garantindo que os saldos antigos são revertidos e os novos aplicados.
 export const updateTransaction = async (id: string, newData: Partial<CreateTransactionDTO>): Promise<TransactionResponse> => {
-    // Busca o estado atual
+
+    // Busca o estado atual da transação
     const { data: oldTx, error: fetchError } = await supabase
         .from('transactions')
         .select('*')
         .eq('id', id)
         .single();
 
-    if (fetchError || !oldTx)
-        throw new Error('Transaction not found');
+    if (fetchError || !oldTx) throw new Error('Transaction not found.');
+    // Mescla os dados para validar o estado final ANTES de alterar a base de dados
+    const mergedData = { ...oldTx, ...newData };
+    validateTransactionLogic(mergedData, mergedData.type);
 
-    // Valida as regras de negócio com os dados novos
-    // Faz uma mescla dos dados antigos com os novos para validar o estado resultante
+    // 3. Reverte o impacto financeiro da transação antiga
     await revertTransactionBalance(oldTx as TransactionResponse);
 
-    // Grava o novo estado na base de dados
+    // Atualiza a transação na base de dados
     const { data: updatedTx, error: updateError } = await supabase
         .from('transactions')
         .update(newData)
@@ -257,44 +240,32 @@ export const updateTransaction = async (id: string, newData: Partial<CreateTrans
         .select()
         .single();
 
-    if (updateError)
-        throw new Error(`Update failed: ${updateError.message}`);
+    if (updateError) throw new Error(`Failed to update transaction: ${updateError.message}`);
 
-    // Consolida o novo estado
+    // Aplica o impacto financeiro da nova transação
     await applyTransactionBalance(updatedTx as TransactionResponse);
+
+    // TODO: Adicionar lógica para atualizar Tags caso venham no 'newData'
 
     return updatedTx as TransactionResponse;
 };
 
-// Delete condição: A função deleteTransaction deve ser responsável por realizar um soft delete de uma transação,
-// revertendo os saldos das contas envolvidas e marcando a transação como "CANCELLED".
+// Remove (Soft Delete) uma transação e reverte o seu impacto no saldo.
 export const deleteTransaction = async (id: string): Promise<void> => {
-    // Busca a transação para saber o que reverter
+
     const { data: transaction, error: fetchError } = await supabase
         .from('transactions')
         .select('*')
         .eq('id', id)
-        // Garante que não tenta deletar algo que já foi deletado (soft delete)
         .is('deleted_at', null)
         .single();
 
-    if (fetchError || !transaction)
-        throw new Error('Transaction not found or already deleted');
+    if (fetchError || !transaction) throw new Error('Transaction not found or already deleted.');
 
-    // Reverte o Saldo das Contas Envolvidas
-    const amount = Number(transaction.amount);
-    if (transaction.type === 'EXPENSE') {
-        await updateAccountBalance(transaction.account_id, amount, 'CREDIT');
-    } else if (transaction.type === 'INCOME') {
-        await updateAccountBalance(transaction.account_id, amount, 'DEBIT');
-    } else if (transaction.type === 'TRANSFER') {
-        await updateAccountBalance(transaction.account_id, amount, 'CREDIT');
-        if (transaction.transfer_account_id) {
-            await updateAccountBalance(transaction.transfer_account_id, amount, 'DEBIT');
-        }
-    }
+    // Reverte o impacto financeiro da transação antes de aplicar o Soft Delete
+    await revertTransactionBalance(transaction as TransactionResponse);
 
-    // Soft Delete
+    // Aplica o Soft Delete
     const { error: deleteError } = await supabase
         .from('transactions')
         .update({
@@ -303,6 +274,5 @@ export const deleteTransaction = async (id: string): Promise<void> => {
         })
         .eq('id', id);
 
-    if (deleteError)
-        throw new Error(`Failed to soft delete: ${deleteError.message}`);
+    if (deleteError) throw new Error(`Failed to delete transaction: ${deleteError.message}`);
 };
