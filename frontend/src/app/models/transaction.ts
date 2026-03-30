@@ -3,6 +3,7 @@ export interface Transaction {
   profile_id?: string;
   account_id: string;
   category_id?: string;
+  transfer_account_id?: string | null;
   amount: number;
   type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
   date: string;
@@ -21,4 +22,17 @@ export interface BackendResponseTransactions {
   results: number;
   totalRecords: number;
   data: Transaction[];
+}
+
+export interface TransactionFilters {
+  month?: number;
+  year?: number;
+  type?: string;
+  categoryId?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: string;
+  tagId?: string;
 }
