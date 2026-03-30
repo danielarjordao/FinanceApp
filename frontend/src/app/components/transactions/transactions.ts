@@ -1,8 +1,14 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, DatePipe, CurrencyPipe } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
+import { Subject, takeUntil, debounceTime, distinctUntilChanged, filter } from 'rxjs';
+
 import { TransactionService } from '../../services/transaction';
+import { TagService } from '../../services/tag';
+import { ProfileService } from '../../services/profile';
+
 import { Transaction } from '../../models/transaction';
+import { Tag } from '../../models/tag';
 
 @Component({
   selector: 'app-transactions',
@@ -11,128 +17,147 @@ import { Transaction } from '../../models/transaction';
   templateUrl: './transactions.html',
   styleUrls: ['./transactions.css']
 })
-export class Transactions implements OnInit {
+export class Transactions implements OnInit, OnDestroy {
   private transactionService = inject(TransactionService);
+  private tagService = inject(TagService);
+  private profileService = inject(ProfileService);
   private cdr = inject(ChangeDetectorRef);
 
+  // State management
   transactions: Transaction[] = [];
+  tags: Tag[] = [];
   totalRecords: number = 0;
-  Math = Math; // Para usar funções matemáticas no template, como Math.ceil para paginação
   isLoading: boolean = true;
   errorMessage: string = '';
-  isModalOpen: boolean = false;
+  private destroy$ = new Subject<void>();
 
-  // Formulário para os filtros de transações
+  // Current profile reference
+  private currentProfileId: string | null = null;
+  Math = Math;
+
+  // Form for filters
   filterForm = new FormGroup({
     month: new FormControl<number>(new Date().getMonth() + 1),
     year: new FormControl<number>(new Date().getFullYear()),
-    // Vazio significa "todos os tipos"
     type: new FormControl<string>(''),
     search: new FormControl<string>(''),
     page: new FormControl<number>(1),
     limit: new FormControl<number>(20),
     sortBy: new FormControl<string>('date'),
-    sortOrder: new FormControl<string>('desc')
+    sortOrder: new FormControl<string>('desc'),
+    tagId: new FormControl<string>('')
   });
 
   ngOnInit(): void {
-    // Iniciar carregamento das transações com os filtros padrão (mês e ano atuais)
-    this.loadTransactions();
+    // 1. Profile Guardian: Wait for active profile
+    this.profileService.currentProfile$
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(profile => !!profile)
+      )
+      .subscribe(profile => {
+        this.currentProfileId = profile!.id;
+        this.loadData(this.currentProfileId);
+      });
 
-    // Fica à escuta de mudanças nos filtros para recarregar as transações automaticamente
-    this.filterForm.valueChanges.subscribe(() => {
-      this.loadTransactions();
-    });
+    // 2. Reactive Filters
+    this.filterForm.valueChanges
+      .pipe(
+        takeUntil(this.destroy$),
+        debounceTime(400),
+        distinctUntilChanged()
+      )
+      .subscribe(() => {
+        if (this.currentProfileId) {
+          this.loadTransactions();
+        }
+      });
   }
 
-  // Método para carregar transações com base nos filtros atuais do formulário
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private loadData(profileId: string): void {
+    this.loadTags(profileId);
+    this.loadTransactions();
+  }
+
   loadTransactions(): void {
+    if (!this.currentProfileId) return;
+
     this.isLoading = true;
     this.errorMessage = '';
 
     const formValues = this.filterForm.getRawValue();
 
-    // Prepara os filtros para a chamada do serviço, convertendo os valores conforme necessário
+    // Map form values to API params, explicitly appending profile_id
     const filters = {
-      month: formValues.month !== null ? Number(formValues.month) : undefined,
-      year: formValues.year !== null ? Number(formValues.year) : undefined,
-      type: formValues.type ? formValues.type : undefined,
-      search: formValues.search ? formValues.search : undefined,
-      page: formValues.page !== null ? Number(formValues.page) : undefined,
-      limit: formValues.limit !== null ? Number(formValues.limit) : undefined,
-      sortBy: formValues.sortBy ? formValues.sortBy : undefined,
-      sortOrder: formValues.sortOrder ? formValues.sortOrder : undefined
+      profile_id: this.currentProfileId,
+      month: formValues.month ?? undefined,
+      year: formValues.year ?? undefined,
+      type: formValues.type || undefined,
+      search: formValues.search || undefined,
+      page: formValues.page ?? 1,
+      limit: formValues.limit ?? 20,
+      sortBy: formValues.sortBy || 'date',
+      sortOrder: formValues.sortOrder || 'desc',
+      tagId: formValues.tagId || undefined
     };
 
     this.transactionService.getTransactions(filters).subscribe({
-      // Atualiza o tipo esperado para coincidir com o Service
-      next: (response: { data: Transaction[]; total: number }) => {
-        this.transactions = response.data; // O array de transações
-        this.totalRecords = response.total; // O total real vindo da base de dados
+      next: (response) => {
+        this.transactions = response.data;
+        this.totalRecords = response.total;
         this.isLoading = false;
-
-        // Força a detecção de mudanças para garantir que a interface seja atualizada
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
       },
-      error: (err: Error) => {
-        this.errorMessage = 'Failed to load transactions. Please try again later.';
+      error: (err) => {
+        this.errorMessage = 'Failed to load transactions.';
         this.isLoading = false;
         console.error('Error fetching transactions:', err);
-        // Força a detecção de mudanças para garantir que a interface seja atualizada mesmo em caso de erro
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
       }
     });
   }
 
-  // Método para exportar as transações filtradas para CSV
-  exportToCsv(): void {
-    if (!this.transactions || this.transactions.length === 0) {
-      return;
-    }
-
-    // Define os cabeçalhos das colunas
-    const headers = ['Date', 'Description', 'Category', 'Account', 'Type', 'Status', 'Amount'];
-
-    // Mapeia os dados da tabela para coincidir com os cabeçalhos
-    const csvData = this.transactions.map(tx => {
-      return [
-        tx.date,
-        // Envolve as descrições em aspas duplas para evitar erros se o texto contiver vírgulas
-        `"${(tx.description || '').replace(/"/g, '""')}"`,
-        `"${(tx.categories?.name || '---')}"`,
-        `"${(tx.origin_account?.name || '---')}"`,
-        tx.type,
-        tx.status,
-        tx.amount
-      ].join(';');
+  loadTags(profileId: string): void {
+    this.tagService.getTags(profileId).subscribe({
+      next: (tags) => {
+        this.tags = tags;
+        this.cdr.markForCheck();
+      },
+      error: (err) => console.error('Error fetching tags:', err)
     });
+  }
 
-    // Junta o cabeçalho e os dados com quebras de linha (\n)
+  exportToCsv(): void {
+    if (!this.transactions.length) return;
+
+    const headers = ['Date', 'Description', 'Category', 'Account', 'Type', 'Status', 'Amount'];
+    const csvData = this.transactions.map(tx => [
+      tx.date,
+      `"${(tx.description || '').replace(/"/g, '""')}"`,
+      `"${tx.category_id || '---'}"`,
+      `"${tx.account_id || '---'}"`,
+      tx.type,
+      tx.status,
+      tx.amount
+    ].join(';'));
+
     const csvString = [headers.join(';'), ...csvData].join('\n');
-
-    // Cria o ficheiro virtual (Blob)
-    // \uFEFF é a marca de ordem de bytes (BOM) para UTF-8, garantindo que os caracteres acentuados sejam exibidos corretamente no Excel
     const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
 
-    // Cria um link invisível e simula o clique para descarregar
     const link = document.createElement('a');
     link.href = url;
-
-    // Nome do ficheiro dinâmico com a data atual
-    const fileName = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
-    link.download = fileName;
-
-    document.body.appendChild(link);
+    link.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
-
-    // Limpeza
-    document.body.removeChild(link);
     URL.revokeObjectURL(url);
   }
 
-  // Método para abrir o formulário de nova transação
   openNewTransactionForm(): void {
-    window.location.href = '/transactions/new'; // Redireciona para a página de criação de transação
+    window.location.href = '/transactions/new';
   }
 }

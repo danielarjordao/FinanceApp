@@ -2,7 +2,7 @@
   <div class="page-header">
     <h2>Transactions</h2>
     <div class="header-actions">
-      <!-- Botão para a funcionalidade de exportação -->
+      <!-- Export button -->
       <button class="btn-secondary" (click)="exportToCsv()" [disabled]="transactions.length === 0 || isLoading">
         <span class="material-symbols-outlined">download</span>
         Export CSV
@@ -15,10 +15,10 @@
 
   <!-- Filters Area -->
   <form [formGroup]="filterForm" class="filters-row">
-	<div class="form-group">
-		<label for="search">Search</label>
-		<input type="text" id="search" formControlName="search" placeholder="Search description...">
-	</div>
+    <div class="form-group">
+      <label for="search">Search</label>
+      <input type="text" id="search" formControlName="search" placeholder="Search description...">
+    </div>
     <div class="form-group">
       <label for="month">Month</label>
       <select id="month" formControlName="month">
@@ -47,8 +47,8 @@
       <select id="type" formControlName="type">
         <option value="">All Types</option>
         <option value="INCOME">Income</option>
-		<option value="EXPENSE">Expense</option>
-		<option value="TRANSFER">Transfer</option>
+        <option value="EXPENSE">Expense</option>
+        <option value="TRANSFER">Transfer</option>
       </select>
     </div>
   </form>
@@ -62,7 +62,7 @@
     } @else if (transactions.length === 0) {
       <div class="state-message">No transactions found for the selected period.</div>
     } @else {
-	<!-- Tabela de transações - com colunas para data, descrição, tipo, status e valor -->
+      <!-- Transactions Table -->
       <table class="data-table">
         <thead>
           <tr>
@@ -79,12 +79,12 @@
               <td>{{ tx.date | date:'dd/MM/yyyy' }}</td>
               <td>{{ tx.description || '---' }}</td>
               <td>
-                <!-- Badge colorido para diferenciar tipos de transação -->
+                <!-- Colored badge -->
                 <span class="badge" [ngClass]="'badge-' + tx.type.toLowerCase()">
                   {{ tx.type }}
                 </span>
               </td>
-              <td>{{ tx.status || 'completed' }}</td>
+              <td>{{ tx.status || 'COMPLETED' }}</td>
               <td class="align-right"
                   [ngClass]="{'text-success': tx.type === 'INCOME', 'text-danger': tx.type === 'EXPENSE'}">
                 {{ tx.type === 'EXPENSE' ? '-' : '' }}{{ tx.amount | currency }}
