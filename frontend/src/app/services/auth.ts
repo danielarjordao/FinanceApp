@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
 import type { GoTrueClient } from '@supabase/auth-js';
 import { environment } from '../../environments/environment';
+import { BehaviorSubject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -9,6 +10,10 @@ import { environment } from '../../environments/environment';
 export class Auth {
   private supabase: SupabaseClient;
   private authClient: GoTrueClient;
+
+  // Estado do utilizador atual para partilhar entre componentes
+  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  public currentUser$ = this.currentUserSubject.asObservable();
 
   constructor() {
     this.supabase = createClient(environment.supabaseUrl, environment.supabaseKey);
@@ -62,6 +67,10 @@ export class Auth {
 
     if (error) return { success: false, error: error.message };
     return { success: true };
+  }
+
+  updateUserState(user: User | null): void {
+    this.currentUserSubject.next(user);
   }
 
   // Obter utilizador atual
