@@ -1,1 +1,87 @@
-<p>transaction-form works!</p>
+<div class="modal-overlay" (click)="goBack()">
+  <!-- stopPropagation evita que clicar dentro do modal o feche -->
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>New Transaction</h3>
+      <button class="btn-icon" type="button" (click)="goBack()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <form [formGroup]="transactionForm" (ngSubmit)="onSubmit()">
+      @if (errorMessage) {
+        <div class="error-banner">{{ errorMessage }}</div>
+      }
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Type</label>
+          <select formControlName="type">
+            <option value="EXPENSE">Expense</option>
+            <option value="INCOME">Income</option>
+            <option value="TRANSFER">Transfer</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" formControlName="date">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Amount</label>
+          <input type="number" formControlName="amount" step="0.01" min="0" placeholder="0.00">
+        </div>
+
+        <div class="form-group">
+          <label>Origin Account</label>
+          <select formControlName="account_id">
+            <option value="">Select Account</option>
+            @for (acc of accounts; track acc.id) {
+              <option [value]="acc.id">{{ acc.name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      @if (transactionForm.get('type')?.value === 'TRANSFER') {
+        <div class="form-group">
+          <label>Destination Account</label>
+          <select formControlName="transfer_account_id">
+            <option value="">Select Destination</option>
+            @for (acc of accounts; track acc.id) {
+              <!-- Não deixa transferir para a mesma conta -->
+              <option [value]="acc.id" [disabled]="acc.id === transactionForm.get('account_id')?.value">
+                {{ acc.name }}
+              </option>
+            }
+          </select>
+        </div>
+      } @else {
+        <div class="form-group">
+          <label>Category</label>
+          <select formControlName="category_id">
+            <option value="">Select Category</option>
+            @for (cat of categories; track cat.id) {
+              <option [value]="cat.id">{{ cat.name }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      <div class="form-group">
+        <label>Description (Optional)</label>
+        <input type="text" formControlName="description" placeholder="Ex: Supermarket, Salary...">
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" (click)="goBack()">Cancel</button>
+        <button type="submit" class="btn-primary" [disabled]="transactionForm.invalid || isLoading">
+          {{ isLoading ? 'Saving...' : 'Save Transaction' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
