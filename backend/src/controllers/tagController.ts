@@ -51,9 +51,7 @@ export const readTags = async (req: Request, res: Response): Promise<void> => {
     }
 };
 
-/**
- * Atualiza uma tag existente (PATCH/PUT).
- */
+// Atualiza uma tag existente (PATCH/PUT).
 export const updateTag = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params as { id: string };
