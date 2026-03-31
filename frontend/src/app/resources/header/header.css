@@ -1,13 +1,13 @@
 .top-header {
   height: 80px;
-  width: 100%; /* Ocupa o ecrã todo */
+  width: 100%;
   background-color: var(--background);
   border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 32px;
-  position: fixed; /* Fixa no topo */
+  position: fixed;
   top: 0;
   left: 0;
   z-index: 1000;
@@ -17,30 +17,6 @@
   display: flex;
   align-items: center;
   gap: 24px;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  width: 192px; /* Mantém o alinhamento com a sidebar */
-}
-
-.icon-logo {
-  font-size: 2rem;
-  color: var(--primary);
-  margin-right: 12px;
-}
-
-.logo-text {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--foreground);
-  margin: 0;
-}
-
-.logo-text span {
-  color: var(--primary);
 }
 
 .header-greeting {
@@ -302,9 +278,6 @@ button.dropdown-item.active-item .material-symbols-outlined {
   .divider {
     display: none;
   }
-
-  .logo { width: auto; }
-  .logo-text { display: none; }
 
   .btn-text { display: none; }
   .btn-primary {

@@ -1,25 +1,9 @@
 import { supabase } from '../config/supabase.js';
+import type { CreateGoalDTO, GoalResponse } from '../models/goalModel.js';
 
-export interface CreateGoalDTO {
-    profile_id: string;
-    title: string;
-    target_amount: number;
-    deadline?: string;
-}
-
-export interface GoalResponse {
-    id: string;
-    profile_id: string;
-    title: string;
-    target_amount: number;
-    deadline: string | null;
-    created_at: string;
-    updated_at: string;
-}
-
-// POST: Cria um novo objetivo para um perfil específico
+// Cria uma nova meta para um perfil específico.
 export const createGoal = async (data: CreateGoalDTO): Promise<GoalResponse> => {
-	const { data: goal, error } = await supabase
+    const { data: goal, error } = await supabase
         .from('goals')
         .insert([data])
         .select()
@@ -29,7 +13,7 @@ export const createGoal = async (data: CreateGoalDTO): Promise<GoalResponse> => 
     return goal;
 };
 
-// GET: Recupera todos os objetivos de um perfil específico, ordenados por deadline
+// Lista todas as metas de um perfil, ordenadas por prazo.
 export const readGoalsByProfile = async (profileId: string): Promise<GoalResponse[]> => {
     const { data, error } = await supabase
         .from('goals')
@@ -42,7 +26,7 @@ export const readGoalsByProfile = async (profileId: string): Promise<GoalRespons
     return data;
 };
 
-// PATCH: Atualiza um objetivo existente, permitindo alterações parciais
+// Atualiza uma meta existente, permitindo alterações parciais.
 export const updateGoal = async (id: string, updates: Partial<CreateGoalDTO>): Promise<GoalResponse> => {
     const { data, error } = await supabase
         .from('goals')
@@ -55,7 +39,7 @@ export const updateGoal = async (id: string, updates: Partial<CreateGoalDTO>): P
     return data;
 };
 
-// DELETE: Marca um objetivo como deletado, definindo a coluna deleted_at com a data atual
+// Remove uma meta de forma lógica (soft delete).
 export const deleteGoal = async (id: string): Promise<{ success: boolean }> => {
     const { error } = await supabase
         .from('goals')
