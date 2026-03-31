@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import * as transactionService from '../services/transactionService.js';
 import type { CreateTransactionDTO, TransactionFilters } from '../models/transactionModel.js';
+import { getErrorMessage, isValidNonEmptyString, sendBadRequest } from '../utils/controllerHelpers.js';
 
 // Cria uma nova transação.
 export const createTransaction = async (req: Request, res: Response): Promise<void> => {
@@ -9,10 +10,7 @@ export const createTransaction = async (req: Request, res: Response): Promise<vo
 
         // Validação de Defesa (Fail-Fast)
         if (!body.account_id || !body.type || !body.amount || !body.date) {
-            res.status(400).json({
-                status: 'error',
-                message: 'Campos obrigatórios em falta: account_id, type, amount, date.'
-            });
+            sendBadRequest(res, 'Campos obrigatórios em falta: account_id, type, amount, date.');
             return;
         }
 
@@ -23,19 +21,19 @@ export const createTransaction = async (req: Request, res: Response): Promise<vo
         res.status(201).json({ status: 'success', data: newTransaction });
 
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Erro desconhecido ao criar transação.';
-        res.status(400).json({ status: 'error', message });
+        const message = getErrorMessage(error, 'Erro desconhecido ao criar transação.');
+        sendBadRequest(res, message);
     }
 };
 
 // Obtém as transações de um perfil com suporte a filtros e paginação.
 export const readTransactions = async (req: Request, res: Response): Promise<void> => {
     try {
-        const profile_id = req.query.profile_id as string;
+        const profile_id = req.query.profile_id;
 
         // Validação de Defesa
-        if (!profile_id) {
-            res.status(400).json({ status: 'error', message: 'O parâmetro profile_id é obrigatório na URL.' });
+        if (!isValidNonEmptyString(profile_id)) {
+            sendBadRequest(res, 'O parâmetro profile_id é obrigatório na URL.');
             return;
         }
 
@@ -67,8 +65,8 @@ export const readTransactions = async (req: Request, res: Response): Promise<voi
         });
 
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Erro ao buscar transações.';
-        res.status(400).json({ status: 'error', message });
+        const message = getErrorMessage(error, 'Erro ao buscar transações.');
+        sendBadRequest(res, message);
     }
 };
 
@@ -78,8 +76,8 @@ export const readTransactionById = async (req: Request, res: Response): Promise<
         const id = req.params.id as string;
 
         // Validação de Defesa do ID
-        if (!id || id.trim() === '') {
-            res.status(400).json({ status: 'error', message: 'Invalid transaction ID.' });
+        if (!isValidNonEmptyString(id)) {
+            sendBadRequest(res, 'Invalid transaction ID.');
             return;
         }
 
@@ -92,7 +90,7 @@ export const readTransactionById = async (req: Request, res: Response): Promise<
         });
 
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Error fetching transaction details.';
+        const message = getErrorMessage(error, 'Error fetching transaction details.');
         res.status(404).json({ status: 'error', message });
     }
 };
@@ -104,8 +102,8 @@ export const updateTransaction = async (req: Request, res: Response): Promise<vo
         const body = req.body as Partial<CreateTransactionDTO>;
 
         // 1. Validação do ID
-        if (!id || id.trim() === '') {
-            res.status(400).json({ status: 'error', message: 'ID da transação inválido.' });
+        if (!isValidNonEmptyString(id)) {
+            sendBadRequest(res, 'ID da transação inválido.');
             return;
         }
 
@@ -116,8 +114,8 @@ export const updateTransaction = async (req: Request, res: Response): Promise<vo
         res.status(200).json({ status: 'success', data: updatedTransaction });
 
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Erro ao atualizar transação.';
-        res.status(400).json({ status: 'error', message });
+        const message = getErrorMessage(error, 'Erro ao atualizar transação.');
+        sendBadRequest(res, message);
     }
 };
 
@@ -129,8 +127,8 @@ export const deleteTransaction = async (req: Request, res: Response): Promise<vo
         const id = req.params.id as string;
 
         // 1. Validação do ID
-        if (!id || id.trim() === '') {
-            res.status(400).json({ status: 'error', message: 'ID da transação inválido.' });
+        if (!isValidNonEmptyString(id)) {
+            sendBadRequest(res, 'ID da transação inválido.');
             return;
         }
 
@@ -144,7 +142,7 @@ export const deleteTransaction = async (req: Request, res: Response): Promise<vo
         });
 
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Erro ao eliminar transação.';
-        res.status(400).json({ status: 'error', message });
+        const message = getErrorMessage(error, 'Erro ao eliminar transação.');
+        sendBadRequest(res, message);
     }
 };

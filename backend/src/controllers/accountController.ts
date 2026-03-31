@@ -1,98 +1,90 @@
 import type { Request, Response } from 'express';
 import * as accountService from '../services/accountService.js';
 import type { CreateAccountDTO } from '../models/accountModel.js';
+import { getErrorMessage, isValidNonEmptyString, sendBadRequest } from '../utils/controllerHelpers.js';
 
-// Valida a entrada e orquestra a resposta para o utilizador.
+// Cria uma nova conta após validar os campos obrigatórios do payload.
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
     try {
         const body = req.body as CreateAccountDTO;
 
-        // Validação de Defesa
+        // Regra de entrada: profile_id e name são obrigatórios para criar a conta.
         if (!body.profile_id || !body.name) {
-            res.status(400).json({
-                status: 'error',
-                message: 'Missing required fields: profile_id, name.'
-            });
+            sendBadRequest(res, 'Missing required fields: profile_id, name.');
             return;
         }
 
-        // Chamada ao serviço com nome limpo
+        // Delega a regra de negócio/persistência ao serviço.
         const newAccount = await accountService.createAccount(body);
 
-        // Resposta de Sucesso
+        // Mantém o contrato de sucesso: status 201 com a conta criada.
         res.status(201).json({
             status: 'success',
             data: newAccount
         });
 
     } catch (error: unknown) {
-        let message = 'An unknown error occurred';
-
-        if (error instanceof Error) {
-            message = error.message;
-        } else if (error && typeof error === 'object' && 'message' in error) {
-            message = String(error.message);
-        }
+        const message = getErrorMessage(error, 'An unknown error occurred');
 
         console.error('[AccountController Error]:', message);
-        res.status(400).json({ status: 'error', message });
+        sendBadRequest(res, message);
     }
 };
 
-// Controlador para listar todas as contas de um perfil.
+// Lista todas as contas de um perfil a partir do parâmetro de query profile_id.
 export const readAccounts = async (req: Request, res: Response): Promise<void> => {
     try {
         const { profile_id } = req.query;
 
-        // Validação de Defesa do profile_id
-        if (typeof profile_id !== 'string' || profile_id.trim() === '') {
-            res.status(400).json({ status: 'error', message: 'Invalid profile ID.' });
+        // Garante que profile_id veio corretamente na query string.
+        if (!isValidNonEmptyString(profile_id)) {
+            sendBadRequest(res, 'Invalid profile ID.');
             return;
         }
 
         const accounts = await accountService.readAccounts(profile_id);
         res.status(200).json({ status: 'success', data: accounts });
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Error';
-        res.status(400).json({ status: 'error', message });
+        const message = getErrorMessage(error, 'Error');
+        sendBadRequest(res, message);
     }
 };
 
-// Controlador para atualizar os detalhes de uma conta existente.
+// Atualiza parcialmente uma conta existente com base no id enviado na rota.
 export const updateAccount = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
         const body = req.body as Partial<CreateAccountDTO>;
 
-        // Validação de Defesa do ID
-        if (typeof id !== 'string' || id.trim() === '') {
-            res.status(400).json({ status: 'error', message: 'Invalid account ID.' });
+        // Impede atualização sem identificador válido.
+        if (!isValidNonEmptyString(id)) {
+            sendBadRequest(res, 'Invalid account ID.');
             return;
         }
 
         const updatedAccount = await accountService.updateAccount(id, body);
         res.status(200).json({ status: 'success', data: updatedAccount });
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Error';
-        res.status(400).json({ status: 'error', message });
+        const message = getErrorMessage(error, 'Error');
+        sendBadRequest(res, message);
     }
 };
 
-// Controlador para deletar uma conta (soft delete).
+// Remove uma conta de forma lógica (soft delete), preservando histórico no banco.
 export const deleteAccount = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
 
-        // Validação de Defesa do ID
-        if (typeof id !== 'string' || id.trim() === '') {
-            res.status(400).json({ status: 'error', message: 'Invalid account ID.' });
+        // Valida o identificador antes de delegar a operação ao serviço.
+        if (!isValidNonEmptyString(id)) {
+            sendBadRequest(res, 'Invalid account ID.');
             return;
         }
 
         await accountService.deleteAccount(id);
         res.status(200).json({ status: 'success', message: 'Account removed.' });
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Error';
-        res.status(400).json({ status: 'error', message });
+        const message = getErrorMessage(error, 'Error');
+        sendBadRequest(res, message);
     }
 };
