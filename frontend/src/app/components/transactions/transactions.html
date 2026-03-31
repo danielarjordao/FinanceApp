@@ -144,7 +144,7 @@
           <!-- Account & Amount -->
           <div class="tx-card-right">
             <p class="tx-amount" [ngClass]="{'text-income': tx.type === 'INCOME', 'text-expense': tx.type === 'EXPENSE', 'text-transfer': tx.type === 'TRANSFER'}">
-              {{ tx.type === 'EXPENSE' ? '-' : (tx.type === 'INCOME' ? '+' : '') }}{{ tx.amount | currency:'EUR' }}
+              {{ tx.type === 'EXPENSE' ? '-' : (tx.type === 'INCOME' ? '+' : '') }}{{ formatCurrency(tx.amount) }}
             </p>
             <p class="tx-account-name">
               {{ tx.type === 'TRANSFER' ? tx.origin_account?.name + ' → ' + tx.destination_account?.name : tx.origin_account?.name || 'Account' }}

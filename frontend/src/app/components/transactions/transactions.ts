@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
-import { CommonModule, DatePipe, CurrencyPipe } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
 import { Subject, takeUntil, debounceTime, filter } from 'rxjs';
 import { Router } from '@angular/router';
@@ -7,6 +7,7 @@ import { Router } from '@angular/router';
 import { TransactionService } from '../../services/transaction';
 import { TagService } from '../../services/tag';
 import { ProfileService } from '../../services/profile';
+import { PreferencesService } from '../../services/preferences';
 
 import { TransactionFilters, TransactionWithDetails } from '../../models/transaction';
 import { Tag } from '../../models/tag';
@@ -14,7 +15,7 @@ import { Tag } from '../../models/tag';
 @Component({
   selector: 'app-transactions',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DatePipe, CurrencyPipe],
+  imports: [CommonModule, ReactiveFormsModule, DatePipe],
   templateUrl: './transactions.html',
   styleUrls: ['./transactions.css']
 })
@@ -23,6 +24,7 @@ export class Transactions implements OnInit, OnDestroy {
   private transactionService = inject(TransactionService);
   private tagService = inject(TagService);
   private profileService = inject(ProfileService);
+  private preferences = inject(PreferencesService);
   private cdr = inject(ChangeDetectorRef);
 
   transactions: TransactionWithDetails[] = [];
@@ -64,6 +66,12 @@ export class Transactions implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    this.preferences.preferences$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.cdr.markForCheck();
+      });
+
     // Observa o perfil atual para carregar dados contextuais da página.
     this.profileService.currentProfile$
       .pipe(
@@ -86,6 +94,11 @@ export class Transactions implements OnInit, OnDestroy {
           this.loadTransactions();
         }
       });
+  }
+
+  // Formata valor usando locale e moeda dinâmicos.
+  formatCurrency(value: number): string {
+    return this.preferences.formatCurrency(value);
   }
 
   ngOnDestroy(): void {
