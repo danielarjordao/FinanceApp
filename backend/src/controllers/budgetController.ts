@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import * as budgetService from '../services/budgetService.js';
 import type { CreateBudgetDTO } from '../models/budgetModel.js';
 import { getErrorMessage, sendBadRequest } from '../utils/controllerHelpers.js';
-import { validateReadBudgetsParams, validateUpdateBudgetFields, validateBudgetId } from '../utils/validators/budgetValidator.js';
+import { validateReadBudgetsParams, validateUpdateBudgetFields } from '../utils/validators/budgetValidator.js';
 
 // Cria um novo orçamento com os dados recebidos no body.
 export const createBudget = async (req: Request, res: Response): Promise<void> => {
