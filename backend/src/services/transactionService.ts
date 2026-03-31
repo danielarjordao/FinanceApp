@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js';
 import * as tagService from './tagService.js';
 import { updateAccountBalance } from './accountService.js';
+import { getNowIso } from '../utils/dateHelpers.js';
 import type {
     CreateTransactionDTO,
     TransactionFilters,
@@ -58,6 +59,55 @@ const applyTransactionBalance = async (transaction: TransactionResponse): Promis
         if (transaction.transfer_account_id) {
             await updateAccountBalance(transaction.transfer_account_id, amount, 'CREDIT');
         }
+    }
+};
+
+// Busca IDs de transações que tenham tags com nome correspondente ao termo pesquisado.
+const searchTransactionIdsByTagName = async (search: string): Promise<string[]> => {
+    const { data: matchedTags } = await supabase
+        .from('tags')
+        .select('id')
+        .ilike('name', `%${search}%`);
+
+    if (!matchedTags || matchedTags.length === 0) {
+        return [];
+    }
+
+    const tagIds = matchedTags.map((tag) => tag.id);
+    const { data: matchedTxTags } = await supabase
+        .from('transaction_tags')
+        .select('transaction_id')
+        .in('tag_id', tagIds);
+
+    return matchedTxTags?.map((item) => item.transaction_id) || [];
+};
+
+// Atualiza as associações de tags de uma transação.
+const syncTransactionTags = async (transactionId: string, tags: string[]): Promise<void> => {
+    const { error: deleteTagsError } = await supabase
+        .from('transaction_tags')
+        .delete()
+        .eq('transaction_id', transactionId);
+
+    if (deleteTagsError) {
+        console.error('Warning: Failed to clear old tags');
+    }
+
+    if (tags.length === 0) {
+        return;
+    }
+
+    const tagInserts = tags.map((tagId: string) => ({
+        transaction_id: transactionId,
+        tag_id: tagId
+    }));
+
+    const { error: insertTagsError } = await supabase
+        .from('transaction_tags')
+        .insert(tagInserts);
+
+    if (insertTagsError) {
+        throw new Error(`Failed to update tags: ${insertTagsError.message}`);
     }
 };
 
@@ -127,37 +177,10 @@ export const readTransactions = async (profile_id: string, filters?: Transaction
 
     if (filters?.type) query = query.eq('type', filters.type);
     if (filters?.categoryId) query = query.eq('category_id', filters.categoryId);
-    if (filters?.search) query = query.ilike('description', `%${filters.search}%`);
-
-    if (filters?.tagId) {
-        query = query.eq('transaction_tags.tag_id', filters.tagId);
-    }
-
-    // ... código anterior (query base) ...
-
-    if (filters?.type) query = query.eq('type', filters.type);
-    if (filters?.categoryId) query = query.eq('category_id', filters.categoryId);
 
     // --- 1. CORREÇÃO DA PESQUISA (Descrição + Tags) ---
     if (filters?.search) {
-        // Pré-pesquisa: Verifica se a palavra digitada corresponde a alguma Tag
-        const { data: matchedTags } = await supabase
-            .from('tags')
-            .select('id')
-            .ilike('name', `%${filters.search}%`);
-
-        let txIdsToInclude: string[] = [];
-
-        // Se encontrou Tags, vai buscar as transações que têm essas Tags
-        if (matchedTags && matchedTags.length > 0) {
-            const tagIds = matchedTags.map(t => t.id);
-            const { data: matchedTxTags } = await supabase
-                .from('transaction_tags')
-                .select('transaction_id')
-                .in('tag_id', tagIds);
-
-            txIdsToInclude = matchedTxTags?.map(t => t.transaction_id) || [];
-        }
+        const txIdsToInclude = await searchTransactionIdsByTagName(filters.search);
 
         // Aplica o filtro OR: (Descrição corresponde OU a transação tem a Tag)
         if (txIdsToInclude.length > 0) {
@@ -172,16 +195,31 @@ export const readTransactions = async (profile_id: string, filters?: Transaction
         query = query.eq('transaction_tags.tag_id', filters.tagId);
     }
 
+    if ((filters?.month && !filters?.year) || (!filters?.month && filters?.year)) {
+        throw new Error('Both month and year filters must be provided together.');
+    }
+
     if (filters?.month && filters?.year) {
+        const month = Number(filters.month);
+        const year = Number(filters.year);
+
+        if (!Number.isInteger(month) || month < 1 || month > 12) {
+            throw new Error('Invalid month filter. Expected a value between 1 and 12.');
+        }
+
+        if (!Number.isInteger(year) || year < 1970 || year > 9999) {
+            throw new Error('Invalid year filter.');
+        }
+
         // Garante que o mês tem sempre 2 dígitos (ex: "04" em vez de "4")
-        const monthStr = String(filters.month).padStart(2, '0');
+        const monthStr = String(month).padStart(2, '0');
 
         // Descobre qual é o último dia do mês corrente
-        const lastDay = new Date(filters.year, filters.month, 0).getDate();
+        const lastDay = new Date(year, month, 0).getDate();
 
         // Monta as strings blindadas contra fusos horários
-        const startDate = `${filters.year}-${monthStr}-01`;
-        const endDate = `${filters.year}-${monthStr}-${lastDay}`;
+        const startDate = `${year}-${monthStr}-01`;
+        const endDate = `${year}-${monthStr}-${lastDay}`;
 
         // Supabase compara as datas perfeitamente
         query = query.gte('date', startDate).lte('date', endDate);
@@ -247,46 +285,41 @@ export const updateTransaction = async (id: string, newData: UpdateTransactionDT
 
     // 4. Reverter o impacto financeiro antigo
     await revertTransactionBalance(oldTx as TransactionResponse);
+    let hasAppliedUpdatedBalance = false;
 
-    // 5. UPDATE: Enviamos APENAS o 'transactionFields' (sem as tags)
-    const { data: updatedTx, error: updateError } = await supabase
-        .from('transactions')
-        .update(transactionFields)
-        .eq('id', id)
-        .select()
-        .single();
+    try {
+        // 5. UPDATE: Enviamos APENAS o 'transactionFields' (sem as tags)
+        const { data: updatedTx, error: updateError } = await supabase
+            .from('transactions')
+            .update({ ...transactionFields, updated_at: getNowIso() })
+            .eq('id', id)
+            .select()
+            .single();
 
-    if (updateError) throw new Error(`Failed to update transaction: ${updateError.message}`);
+        if (updateError) throw new Error(`Failed to update transaction: ${updateError.message}`);
 
-    // 6. Aplicar o novo impacto financeiro
-    await applyTransactionBalance(updatedTx as TransactionResponse);
+        // 6. Aplicar o novo impacto financeiro
+        await applyTransactionBalance(updatedTx as TransactionResponse);
+        hasAppliedUpdatedBalance = true;
 
-    // 7. Lógica de Tags (O teu TODO)
-    if (tags && Array.isArray(tags)) {
-        // Remove todas as associações antigas desta transação
-        const { error: deleteTagsError } = await supabase
-            .from('transaction_tags')
-            .delete()
-            .eq('transaction_id', id);
-
-        if (deleteTagsError) console.error('Warning: Failed to clear old tags');
-
-        // Se houver novas tags, insere as novas associações
-        if (tags.length > 0) {
-            const tagInserts = tags.map((tagId: string) => ({
-                transaction_id: id,
-                tag_id: tagId
-            }));
-
-            const { error: insertTagsError } = await supabase
-                .from('transaction_tags')
-                .insert(tagInserts);
-
-            if (insertTagsError) throw new Error(`Failed to update tags: ${insertTagsError.message}`);
+        // 7. Lógica de Tags
+        if (tags && Array.isArray(tags)) {
+            await syncTransactionTags(id, tags);
         }
-    }
 
-    return updatedTx as TransactionResponse;
+        return updatedTx as TransactionResponse;
+    } catch (error: unknown) {
+        // Se o saldo novo não chegou a ser aplicado, restaura o saldo antigo.
+        if (!hasAppliedUpdatedBalance) {
+            await applyTransactionBalance(oldTx as TransactionResponse);
+        }
+
+        if (error instanceof Error) {
+            throw error;
+        }
+
+        throw new Error('Failed to update transaction.', { cause: error });
+    }
 };
 
 export const deleteTransaction = async (id: string): Promise<void> => {
@@ -300,15 +333,33 @@ export const deleteTransaction = async (id: string): Promise<void> => {
 
     if (fetchError || !transaction) throw new Error('Transaction not found or already deleted.');
 
-    await revertTransactionBalance(transaction as TransactionResponse);
-
+    const deletedAt = getNowIso();
     const { error: deleteError } = await supabase
         .from('transactions')
         .update({
-            deleted_at: new Date().toISOString(),
+            deleted_at: deletedAt,
             status: 'CANCELLED'
         })
         .eq('id', id);
 
     if (deleteError) throw new Error(`Failed to delete transaction: ${deleteError.message}`);
+
+    try {
+        await revertTransactionBalance(transaction as TransactionResponse);
+    } catch (error: unknown) {
+        const { error: rollbackError } = await supabase
+            .from('transactions')
+            .update({
+                deleted_at: null,
+                status: transaction.status,
+                updated_at: getNowIso()
+            })
+            .eq('id', id);
+
+        if (rollbackError) {
+            throw new Error(`Failed to revert balance and rollback soft delete: ${rollbackError.message}`, { cause: error });
+        }
+
+        throw new Error('Failed to revert transaction balance after soft delete. Soft delete rollback applied.', { cause: error });
+    }
 };
