@@ -38,11 +38,12 @@ export class Header implements OnInit, OnDestroy {
   isUserMenuOpen = false;
   isProfileMenuOpen = false;
   isNavMenuOpen = false;
-  isDarkMode = false;
+  isDarkMode = true;
 
   private destroy$ = new Subject<void>();
 
   ngOnInit() {
+    document.body.classList.toggle('dark', this.isDarkMode);
     // Listen to auth changes
     this.authService.currentUser$
       .pipe(takeUntil(this.destroy$))
@@ -81,7 +82,11 @@ export class Header implements OnInit, OnDestroy {
   // Toggles between light and dark mode by applying a CSS class to the body
   toggleTheme() {
     this.isDarkMode = !this.isDarkMode;
-    document.body.classList.toggle('dark', this.isDarkMode);
+    if (this.isDarkMode) {
+      document.body.classList.toggle('dark', this.isDarkMode);
+    } else {
+      document.body.classList.remove('dark');
+    }
   }
 
   // Allows the user to select a different profile, updating the active profile and closing the menu
