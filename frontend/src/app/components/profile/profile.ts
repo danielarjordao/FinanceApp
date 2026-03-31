@@ -5,11 +5,12 @@ import { Subject, finalize, takeUntil } from 'rxjs';
 import { ProfileService } from '../../services/profile';
 import { Auth } from '../../services/auth';
 import { Profile } from '../../models/profile';
+import { LoadingIndicator } from '../../resources/loading-indicator/loading-indicator';
 
 @Component({
   selector: 'app-profiles',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, LoadingIndicator],
   templateUrl: './profile.html',
   styleUrls: ['./profile.css']
 })

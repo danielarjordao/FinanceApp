@@ -16,7 +16,7 @@
   }
 
   @if (isLoading) {
-    <div class="loading-state">Loading accounts...</div>
+    <app-loading-indicator message="Loading accounts..."></app-loading-indicator>
   } @else if (!activeProfileId) {
     <div class="empty-state">Select a profile to view accounts.</div>
   } @else if (accounts.length === 0) {

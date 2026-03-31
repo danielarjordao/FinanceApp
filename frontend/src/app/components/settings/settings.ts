@@ -6,6 +6,7 @@ import { SettingsService } from '../../services/settings';
 import { Auth } from '../../services/auth';
 import { UserSettings } from '../../models/settings';
 import { PreferencesService } from '../../services/preferences';
+import { LoadingIndicator } from '../../resources/loading-indicator/loading-indicator';
 
 type SettingsForm = FormGroup<{
   theme: FormControl<'light' | 'dark' | 'system'>;
@@ -17,7 +18,7 @@ type SettingsForm = FormGroup<{
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, LoadingIndicator],
   templateUrl: './settings.html',
   styleUrls: ['./settings.css']
 })

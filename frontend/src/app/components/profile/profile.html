@@ -16,7 +16,7 @@
   }
 
   @if (isLoading) {
-    <div class="loading-state">Loading profiles...</div>
+    <app-loading-indicator message="Loading profiles..."></app-loading-indicator>
   } @else if (profiles.length === 0) {
     <div class="empty-state">No profiles found. Create your first profile.</div>
   } @else {

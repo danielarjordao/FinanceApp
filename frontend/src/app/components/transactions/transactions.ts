@@ -8,6 +8,7 @@ import { TransactionService } from '../../services/transaction';
 import { TagService } from '../../services/tag';
 import { ProfileService } from '../../services/profile';
 import { PreferencesService } from '../../services/preferences';
+import { LoadingIndicator } from '../../resources/loading-indicator/loading-indicator';
 
 import { TransactionFilters, TransactionWithDetails } from '../../models/transaction';
 import { Tag } from '../../models/tag';
@@ -15,7 +16,7 @@ import { Tag } from '../../models/tag';
 @Component({
   selector: 'app-transactions',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DatePipe],
+  imports: [CommonModule, ReactiveFormsModule, DatePipe, LoadingIndicator],
   templateUrl: './transactions.html',
   styleUrls: ['./transactions.css']
 })

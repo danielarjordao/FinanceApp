@@ -1,0 +1,37 @@
+.loading-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--muted-foreground);
+  padding: 40px;
+  min-height: 96px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--muted) 60%, transparent);
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  animation: app-loading-spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+.loading-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+@keyframes app-loading-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

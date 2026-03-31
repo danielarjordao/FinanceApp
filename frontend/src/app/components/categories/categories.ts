@@ -5,6 +5,7 @@ import { Subject, finalize, takeUntil } from 'rxjs';
 import { CategoryService } from '../../services/category';
 import { Category } from '../../models/category';
 import { ProfileService } from '../../services/profile';
+import { LoadingIndicator } from '../../resources/loading-indicator/loading-indicator';
 
 type CategoryForm = FormGroup<{
   name: FormControl<string>;
@@ -16,7 +17,7 @@ type CategoryForm = FormGroup<{
 @Component({
   selector: 'app-categories',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, LoadingIndicator],
   templateUrl: './categories.html',
   styleUrls: ['./categories.css']
 })

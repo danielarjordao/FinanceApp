@@ -89,7 +89,7 @@
   <!-- Transaction List (Spotify-like Cards) -->
   <div class="transaction-list">
     @if (isLoading) {
-      <div class="state-message">Loading transactions...</div>
+      <app-loading-indicator message="Loading transactions..."></app-loading-indicator>
     } @else if (errorMessage) {
       <div class="state-message error-text">{{ errorMessage }}</div>
     } @else if (transactions.length === 0) {

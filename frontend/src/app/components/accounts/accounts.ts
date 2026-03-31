@@ -6,6 +6,7 @@ import { AccountService } from '../../services/account';
 import { Account } from '../../models/account';
 import { ProfileService } from '../../services/profile';
 import { PreferencesService } from '../../services/preferences';
+import { LoadingIndicator } from '../../resources/loading-indicator/loading-indicator';
 
 type AccountForm = FormGroup<{
   name: FormControl<string>;
@@ -16,7 +17,7 @@ type AccountForm = FormGroup<{
 @Component({
   selector: 'app-accounts',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, LoadingIndicator],
   templateUrl: './accounts.html',
   styleUrls: ['./accounts.css']
 })

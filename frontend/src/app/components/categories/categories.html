@@ -16,7 +16,7 @@
   }
 
   @if (isLoading) {
-    <div class="loading-state">Loading categories...</div>
+    <app-loading-indicator message="Loading categories..."></app-loading-indicator>
   } @else if (!activeProfileId) {
     <div class="empty-state">Select a profile to view categories.</div>
   } @else if (categories.length === 0) {
