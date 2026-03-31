@@ -14,47 +14,60 @@ import recurringRoutes from './src/routes/recurringRoutes.js';
 import userSettingsRoutes from './src/routes/userSettingsRoutes.js';
 import profileRoutes from './src/routes/profileRoutes.js';
 
-// Instância do Express
+// Instância principal da aplicação Express.
 const app = express();
-// Define a porta a partir das variáveis de ambiente ou usa 3000 como default
+// Define a porta a partir das variáveis de ambiente ou usa 3000 como padrão.
 const port = Number(process.env.PORT) || 3000;
 
-// Define os middlewares globais
-// CORS para permitir requisições de diferentes origens (ex: frontend Angular)
-app.use(cors());
-// Middleware para parsear JSON no corpo das requisições
-app.use(express.json());
+// Configura os middlewares globais da aplicação.
+const setupMiddlewares = (): void => {
+  // Permite requisições de diferentes origens (ex.: frontend Angular).
+  app.use(cors());
+  // Faz o parse automático do corpo JSON das requisições.
+  app.use(express.json());
+};
 
-// Registo das Rotas
-app.use('/api/v1/transactions', transactionRoutes);
-app.use('/api/v1/accounts', accountRoutes);
-app.use('/api/v1/categories', categoryRoutes);
-app.use('/api/v1/tags', tagRoutes);
-app.use('/api/v1/installments', installmentRoutes);
-app.use('/api/v1/dashboard', dashboardRoutes);
-app.use('/api/v1/budgets', budgetRoutes);
-app.use('/api/v1/goals', goalRoutes);
-app.use('/api/v1/recurring', recurringRoutes);
-app.use('/api/v1/user-settings', userSettingsRoutes);
-app.use('/api/v1/profiles', profileRoutes);
+// Registra todas as rotas versionadas da API.
+const setupApiRoutes = (): void => {
+  app.use('/api/v1/transactions', transactionRoutes);
+  app.use('/api/v1/accounts', accountRoutes);
+  app.use('/api/v1/categories', categoryRoutes);
+  app.use('/api/v1/tags', tagRoutes);
+  app.use('/api/v1/installments', installmentRoutes);
+  app.use('/api/v1/dashboard', dashboardRoutes);
+  app.use('/api/v1/budgets', budgetRoutes);
+  app.use('/api/v1/goals', goalRoutes);
+  app.use('/api/v1/recurring', recurringRoutes);
+  app.use('/api/v1/user-settings', userSettingsRoutes);
+  app.use('/api/v1/profiles', profileRoutes);
+};
 
-// Rota de saúde para verificar se a API está operacional
-app.get('/api/v1/health', (req: Request, res: Response) => {
+// Registra endpoints institucionais (saúde, raiz e boas-vindas da API).
+const setupSystemEndpoints = (): void => {
+  app.get('/api/v1/health', (_req: Request, res: Response) => {
     res.status(200).json({ status: 'success', message: 'API is running in TypeScript!' });
-});
-
-app.get('/', (req, res) => {
-  res.redirect('/api/v1');
-});
-
-app.get('/api/v1', (req, res) => {
-  res.status(200).json({
-    status: 'success',
-    message: 'API is running in TypeScript! Welcome to the Financial Management API.'
   });
-});
 
-// Inicia o servidor na porta definida
-app.listen(port, '0.0.0.0', () => {
+  app.get('/', (_req: Request, res: Response) => {
+    res.redirect('/api/v1');
+  });
+
+  app.get('/api/v1', (_req: Request, res: Response) => {
+    res.status(200).json({
+      status: 'success',
+      message: 'API is running in TypeScript! Welcome to the Financial Management API.'
+    });
+  });
+};
+
+// Inicia o servidor HTTP na porta configurada.
+const startServer = (): void => {
+  app.listen(port, '0.0.0.0', () => {
     console.log(`Server is running on port ${port}`);
-});
+  });
+};
+
+setupMiddlewares();
+setupApiRoutes();
+setupSystemEndpoints();
+startServer();
