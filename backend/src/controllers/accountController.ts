@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import * as accountService from '../services/accountService.js';
-import type { CreateAccountDTO } from '../services/accountService.js';
+import type { CreateAccountDTO } from '../models/accountModel.js';
 
 // Valida a entrada e orquestra a resposta para o utilizador.
 export const createAccount = async (req: Request, res: Response): Promise<void> => {

@@ -1,21 +1,5 @@
 import { supabase } from '../config/supabase.js';
-
-// Interface para os dados de entrada
-export interface CreateAccountDTO {
-    profile_id: string;
-    name: string;
-    type?: 'CHECKING' | 'SAVINGS' | 'CREDIT' | 'CASH';
-    initial_balance?: number;
-    balance?: number;
-    is_main_featured?: boolean;
-}
-
-// Interface para a resposta da base de dados
-export interface AccountResponse extends CreateAccountDTO {
-    id: string;
-    created_at: string;
-    updated_at: string;
-}
+import type { AccountResponse, CreateAccountDTO } from '../models/accountModel.js';
 
 // Cria uma nova conta bancária no sistema.
 export const createAccount = async (accountData: CreateAccountDTO): Promise<AccountResponse> => {
