@@ -1,17 +1,21 @@
 import { supabase } from '../config/supabase.js';
 import type { CreateUserSettingsDTO, UserSettingsResponse } from '../models/userSettingsModel.js';
+import { getNowIso } from '../utils/dateHelpers.js';
 
-// Normalmente, cria-se as configurações ao mesmo tempo que o Profile/User
+// Normaliza os dados iniciais das configurações do utilizador com valores padrão.
+const buildCreateUserSettingsPayload = (data: CreateUserSettingsDTO) => ({
+    user_id: data.user_id,
+    theme: data.theme || 'light',
+    currency: data.currency || 'EUR',
+    language: data.language || 'pt-PT',
+    receive_notifications: data.receive_notifications ?? true
+});
+
+// Cria as configurações iniciais de um utilizador.
 export const createUserSettings = async (data: CreateUserSettingsDTO): Promise<UserSettingsResponse> => {
     const { data: settings, error } = await supabase
         .from('user_settings')
-        .insert([{
-            user_id: data.user_id,
-            theme: data.theme || 'light',
-            currency: data.currency || 'EUR',
-            language: data.language || 'pt-PT',
-            receive_notifications: data.receive_notifications ?? true
-        }])
+        .insert([buildCreateUserSettingsPayload(data)])
         .select()
         .single();
 
@@ -19,7 +23,7 @@ export const createUserSettings = async (data: CreateUserSettingsDTO): Promise<U
     return settings as UserSettingsResponse;
 };
 
-// Ler as configurações de um utilizador específico (só deve existir uma por user)
+// Lê as configurações de um utilizador específico.
 export const readUserSettings = async (userId: string): Promise<UserSettingsResponse> => {
     const { data, error } = await supabase
         .from('user_settings')
@@ -34,7 +38,7 @@ export const readUserSettings = async (userId: string): Promise<UserSettingsResp
 export const updateUserSettings = async (userId: string, updates: Partial<CreateUserSettingsDTO>): Promise<UserSettingsResponse> => {
     const { data, error } = await supabase
         .from('user_settings')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update({ ...updates, updated_at: getNowIso() })
         .eq('user_id', userId)
         .select()
         .single();
@@ -43,4 +47,4 @@ export const updateUserSettings = async (userId: string, updates: Partial<Create
     return data as UserSettingsResponse;
 };
 
-// Não há função delete porque as settings pertencem sempre ao utilizador enquanto ele existir
+// Não há função delete: as settings pertencem ao utilizador enquanto ele existir.
