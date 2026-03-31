@@ -72,6 +72,31 @@ export const readTransactions = async (req: Request, res: Response): Promise<voi
     }
 };
 
+// Controlador para obter uma transação específica pelo ID
+export const readTransactionById = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const id = req.params.id as string;
+
+        // Validação de Defesa do ID
+        if (!id || id.trim() === '') {
+            res.status(400).json({ status: 'error', message: 'Invalid transaction ID.' });
+            return;
+        }
+
+        const transaction = await transactionService.readTransactionById(id);
+
+        // Resposta Estruturada
+        res.status(200).json({
+            status: 'success',
+            data: transaction
+        });
+
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Error fetching transaction details.';
+        res.status(404).json({ status: 'error', message });
+    }
+};
+
 // Atualiza os detalhes de uma transação existente.
 export const updateTransaction = async (req: Request, res: Response): Promise<void> => {
     try {

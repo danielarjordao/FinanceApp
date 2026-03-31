@@ -48,6 +48,11 @@ export interface TransactionWithDetails extends TransactionResponse {
     destination_account: { name: string; } | null;
 }
 
+// Esta interface estende o DTO original e adiciona as tags de forma segura
+export interface UpdateTransactionDTO extends Partial<CreateTransactionDTO> {
+    tags?: string[];
+}
+
 // FUNÇÕES AUXILIARES
 
 const validateTransactionLogic = (data: Partial<CreateTransactionDTO>, type: string): void => {
@@ -148,7 +153,6 @@ export const readTransactions = async (profile_id: string, filters?: Transaction
 
     if (accountIds.length === 0) return { data: [], totalCount: 0 };
 
-    // <- AJUSTADO: Removido 'color' das tags
     const tagQuery = filters?.tagId
         ? 'transaction_tags!inner( tags(id, name) )'
         : 'transaction_tags( tags(id, name) )';
@@ -173,10 +177,57 @@ export const readTransactions = async (profile_id: string, filters?: Transaction
         query = query.eq('transaction_tags.tag_id', filters.tagId);
     }
 
+    // ... código anterior (query base) ...
+
+    if (filters?.type) query = query.eq('type', filters.type);
+    if (filters?.categoryId) query = query.eq('category_id', filters.categoryId);
+
+    // --- 1. CORREÇÃO DA PESQUISA (Descrição + Tags) ---
+    if (filters?.search) {
+        // Pré-pesquisa: Verifica se a palavra digitada corresponde a alguma Tag
+        const { data: matchedTags } = await supabase
+            .from('tags')
+            .select('id')
+            .ilike('name', `%${filters.search}%`);
+
+        let txIdsToInclude: string[] = [];
+
+        // Se encontrou Tags, vai buscar as transações que têm essas Tags
+        if (matchedTags && matchedTags.length > 0) {
+            const tagIds = matchedTags.map(t => t.id);
+            const { data: matchedTxTags } = await supabase
+                .from('transaction_tags')
+                .select('transaction_id')
+                .in('tag_id', tagIds);
+
+            txIdsToInclude = matchedTxTags?.map(t => t.transaction_id) || [];
+        }
+
+        // Aplica o filtro OR: (Descrição corresponde OU a transação tem a Tag)
+        if (txIdsToInclude.length > 0) {
+            query = query.or(`description.ilike.%${filters.search}%,id.in.(${txIdsToInclude.join(',')})`);
+        } else {
+            // Se a palavra não é uma Tag, pesquisa apenas na descrição
+            query = query.ilike('description', `%${filters.search}%`);
+        }
+    }
+
+    if (filters?.tagId) {
+        query = query.eq('transaction_tags.tag_id', filters.tagId);
+    }
+
     if (filters?.month && filters?.year) {
-        const monthIndex = filters.month - 1;
-        const startDate = new Date(filters.year, monthIndex, 1).toISOString();
-        const endDate = new Date(filters.year, monthIndex + 1, 0, 23, 59, 59).toISOString();
+        // Garante que o mês tem sempre 2 dígitos (ex: "04" em vez de "4")
+        const monthStr = String(filters.month).padStart(2, '0');
+
+        // Descobre qual é o último dia do mês corrente
+        const lastDay = new Date(filters.year, filters.month, 0).getDate();
+
+        // Monta as strings blindadas contra fusos horários
+        const startDate = `${filters.year}-${monthStr}-01`;
+        const endDate = `${filters.year}-${monthStr}-${lastDay}`;
+
+        // Supabase compara as datas perfeitamente
         query = query.gte('date', startDate).lte('date', endDate);
     }
 
@@ -198,8 +249,34 @@ export const readTransactions = async (profile_id: string, filters?: Transaction
     };
 };
 
-export const updateTransaction = async (id: string, newData: Partial<CreateTransactionDTO>): Promise<TransactionResponse> => {
+// Obtém uma transação específica pelo ID com todos os detalhes
+export const readTransactionById = async (id: string): Promise<TransactionWithDetails> => {
+    const { data, error } = await supabase
+        .from('transactions')
+        .select(`
+            *,
+            categories (name, icon, color),
+            origin_account:account_id (name),
+            destination_account:transfer_account_id (name),
+            transaction_tags( tags(id, name) )
+        `)
+        .eq('id', id)
+        .is('deleted_at', null)
+        .single(); // .single() garante que devolve um objeto e não um array
 
+    if (error || !data) {
+        throw new Error(`Transaction not found: ${error?.message || ''}`);
+    }
+
+    return data as TransactionWithDetails;
+};
+
+export const updateTransaction = async (id: string, newData: UpdateTransactionDTO): Promise<TransactionResponse> => {
+
+    // 1. Separar as tags dos dados da tabela 'transactions'
+    const { tags, ...transactionFields } = newData;
+
+    // 2. Buscar a transação antiga para reverter o saldo
     const { data: oldTx, error: fetchError } = await supabase
         .from('transactions')
         .select('*')
@@ -208,23 +285,50 @@ export const updateTransaction = async (id: string, newData: Partial<CreateTrans
 
     if (fetchError || !oldTx) throw new Error('Transaction not found.');
 
-    const mergedData = { ...oldTx, ...newData };
+    // 3. Validar a lógica com os dados mesclados (usando apenas campos da tabela)
+    const mergedData = { ...oldTx, ...transactionFields };
     validateTransactionLogic(mergedData, mergedData.type);
 
+    // 4. Reverter o impacto financeiro antigo
     await revertTransactionBalance(oldTx as TransactionResponse);
 
+    // 5. UPDATE: Enviamos APENAS o 'transactionFields' (sem as tags)
     const { data: updatedTx, error: updateError } = await supabase
         .from('transactions')
-        .update(newData)
+        .update(transactionFields)
         .eq('id', id)
         .select()
         .single();
 
     if (updateError) throw new Error(`Failed to update transaction: ${updateError.message}`);
 
+    // 6. Aplicar o novo impacto financeiro
     await applyTransactionBalance(updatedTx as TransactionResponse);
 
-    // TODO: Adicionar lógica para atualizar Tags caso venham no 'newData'
+    // 7. Lógica de Tags (O teu TODO)
+    if (tags && Array.isArray(tags)) {
+        // Remove todas as associações antigas desta transação
+        const { error: deleteTagsError } = await supabase
+            .from('transaction_tags')
+            .delete()
+            .eq('transaction_id', id);
+
+        if (deleteTagsError) console.error('Warning: Failed to clear old tags');
+
+        // Se houver novas tags, insere as novas associações
+        if (tags.length > 0) {
+            const tagInserts = tags.map((tagId: string) => ({
+                transaction_id: id,
+                tag_id: tagId
+            }));
+
+            const { error: insertTagsError } = await supabase
+                .from('transaction_tags')
+                .insert(tagInserts);
+
+            if (insertTagsError) throw new Error(`Failed to update tags: ${insertTagsError.message}`);
+        }
+    }
 
     return updatedTx as TransactionResponse;
 };
