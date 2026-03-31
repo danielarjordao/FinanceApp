@@ -13,7 +13,7 @@ import { Settings } from './components/settings/settings';
 import { Terms } from './components/terms/terms';
 import { authGuard } from './guards/auth-guard';
 import { guestGuard } from './guards/guest-guard';
-import { Profile } from './components/profile/profile';
+import { UserInfo } from './components/user-info/user-info';
 import { TransactionForm } from './components/transaction-form/transaction-form';
 
 const LOGIN_PATH = '/auth/login';
@@ -30,7 +30,7 @@ const protectedRoutes: Routes = [
   { path: 'goals', component: Goals },
   { path: 'categories', component: Categories },
   { path: 'budgets', component: Budgets },
-  { path: 'profile', component: Profile },
+  { path: 'user-info', component: UserInfo },
   { path: 'settings', component: Settings },
 ].map(route => ({
   ...route,
@@ -39,6 +39,7 @@ const protectedRoutes: Routes = [
 
 export const routes: Routes = [
   { path: 'auth/login', component: Login, canActivate: [guestGuard] },
+  { path: 'profile', redirectTo: '/user-info', pathMatch: 'full' },
   ...protectedRoutes,
   { path: 'terms', component: Terms },
   { path: '', redirectTo: LOGIN_PATH, pathMatch: 'full' },
