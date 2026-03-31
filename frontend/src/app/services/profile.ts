@@ -1,6 +1,6 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, NgZone, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable, from, map, switchMap, of, shareReplay, BehaviorSubject, tap } from 'rxjs';
+import { Observable, from, map, switchMap, of, shareReplay, BehaviorSubject, tap, catchError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Auth } from './auth';
 import {
@@ -14,6 +14,7 @@ import {
 export class ProfileService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(Auth);
+  private readonly ngZone = inject(NgZone);
   private readonly apiUrl = `${environment.apiUrl}/profiles`;
   private readonly activeProfileStoragePrefix = 'active_profile_id';
   private currentUserId: string | null = null;
@@ -41,15 +42,23 @@ export class ProfileService {
         return this.http.get<ProfileListResponse>(this.apiUrl, { headers, params }).pipe(
           map(response => response.data || []),
           tap(profiles => this.ensureActiveProfile(profiles, user.id)),
+          catchError(error => {
+            console.error('Failed to load profiles:', error);
+            this.setActiveProfile(null, false);
+            return of([]);
+          }),
         );
       });
     }),
     shareReplay(1),
   );
 
-  // Atualiza o perfil ativo fora do ciclo de deteccao atual.
+  // Garante inicializacao do perfil ativo mesmo sem subscriber externo.
+  private readonly profileBootstrapSubscription = this.allProfiles$.subscribe();
+
+  // Atualiza perfil ativo dentro da zona do Angular.
   private updateActiveProfile(profile: Profile | null): void {
-    setTimeout(() => {
+    this.ngZone.run(() => {
       this.currentProfileSubject.next(profile);
     });
   }
