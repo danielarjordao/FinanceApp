@@ -1,16 +1,18 @@
 import type { Request, Response } from 'express';
 import * as tagService from '../services/tagService.js';
 import type { CreateTagDTO } from '../models/tagModel.js';
-import { getErrorMessage, isValidNonEmptyString, sendBadRequest } from '../utils/controllerHelpers.js';
+import { getErrorMessage, sendBadRequest } from '../utils/controllerHelpers.js';
+import { validateCreateTag, validateProfileIdQuery, validateTagId } from '../utils/validators/tagValidator.js';
 
 // Cria uma nova Tag validando os campos obrigatórios.
 export const createTag = async (req: Request, res: Response): Promise<void> => {
     try {
         const body = req.body as CreateTagDTO;
 
-        // Validação de Defesa (Fail-Fast)
-        if (!body.name || !body.profile_id) {
-            sendBadRequest(res, 'Missing required fields: name, profile_id.');
+        // Validação dos campos obrigatórios.
+        const validation = validateCreateTag(body);
+        if (!validation.isValid) {
+            sendBadRequest(res, validation.message!);
             return;
         }
 
@@ -32,12 +34,14 @@ export const readTags = async (req: Request, res: Response): Promise<void> => {
     try {
         const { profile_id } = req.query;
 
-        if (!isValidNonEmptyString(profile_id)) {
-            sendBadRequest(res, 'Invalid or missing profile_id.');
+        // Validação do parâmetro obrigatório profile_id.
+        const validation = validateProfileIdQuery(profile_id);
+        if (!validation.isValid) {
+            sendBadRequest(res, validation.message!);
             return;
         }
 
-        const tags = await tagService.readTags(profile_id);
+        const tags = await tagService.readTags(profile_id as string);
         res.status(200).json({
             status: 'success',
             results: tags.length,
@@ -55,8 +59,10 @@ export const updateTag = async (req: Request, res: Response): Promise<void> => {
         const { id } = req.params as { id: string };
         const body = req.body as Partial<CreateTagDTO>;
 
-        if (!isValidNonEmptyString(id)) {
-            sendBadRequest(res, 'Tag ID is required.');
+        // Validação do parâmetro obrigatório id.
+        const validation = validateTagId(id);
+        if (!validation.isValid) {
+            sendBadRequest(res, validation.message!);
             return;
         }
 
@@ -74,8 +80,10 @@ export const deleteTag = async (req: Request, res: Response): Promise<void> => {
         // Força o 'id' a ser tratado como string
         const id = req.params.id as string;
 
-        if (!isValidNonEmptyString(id)) {
-            sendBadRequest(res, 'Invalid tag ID.');
+        // Validação do parâmetro obrigatório id.
+        const validation = validateTagId(id);
+        if (!validation.isValid) {
+            sendBadRequest(res, validation.message!);
             return;
         }
 
