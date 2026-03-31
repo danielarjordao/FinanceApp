@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import * as profileService from '../services/profileService.js';
-import type { CreateProfileDTO } from '../services/profileService.js';
+import type { CreateProfileDTO } from '../models/profileModel.js';
 
 export const createProfile = async (req: Request, res: Response): Promise<void> => {
     try {
