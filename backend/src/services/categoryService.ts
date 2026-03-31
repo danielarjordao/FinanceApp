@@ -4,10 +4,12 @@ import { supabase } from '../config/supabase.js';
 export interface CreateCategoryDTO {
     name: string;
     icon?: string;
+    color?: string; // <- ADICIONADO: Suporte para cor nas categorias
     profile_id: string;
     type: 'INCOME' | 'EXPENSE';
     parent_id?: string;
 }
+
 // Interface para o que a base de dados devolve
 export interface CategoryResponse extends CreateCategoryDTO {
     id: string;
@@ -17,19 +19,18 @@ export interface CategoryResponse extends CreateCategoryDTO {
 
 // Cria um novo registo de categoria.
 export const createCategory = async (categoryData: CreateCategoryDTO): Promise<CategoryResponse> => {
-    const { name, icon, profile_id, type } = categoryData;
+    const { name, icon, color, profile_id, type } = categoryData;
 
     const { data, error } = await supabase
         .from('categories')
         .insert([{
             name,
-             // Garante consistência com o SQL
             type: type?.toUpperCase() || 'EXPENSE',
             icon: icon || 'tag',
+            color: color || '#808080',
             profile_id
         }])
         .select()
-        // .single() garante que recebe um objeto e não um array [0]
         .single();
 
     if (error) {
