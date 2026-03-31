@@ -43,15 +43,13 @@ export interface TransactionFilters {
 }
 
 export interface TransactionWithDetails extends TransactionResponse {
-    categories: { name: string; icon: string; } | null;
+    categories: { name: string; icon: string; color?: string; } | null; // <- ADICIONADO: color aqui
     origin_account: { name: string; } | null;
     destination_account: { name: string; } | null;
 }
 
 // FUNÇÕES AUXILIARES
 
-// Valida as regras de negócio de uma transação (Fail-Fast).
-// Lança um erro imediatamente se as regras financeiras forem violadas.
 const validateTransactionLogic = (data: Partial<CreateTransactionDTO>, type: string): void => {
     if (type === 'TRANSFER') {
         if (!data.transfer_account_id || data.account_id === data.transfer_account_id) {
@@ -72,7 +70,6 @@ const validateTransactionLogic = (data: Partial<CreateTransactionDTO>, type: str
     }
 };
 
-// Desfaz o impacto de uma transação no saldo das contas envolvidas.
 const revertTransactionBalance = async (transaction: TransactionResponse): Promise<void> => {
     const amount = Number(transaction.amount);
 
@@ -88,7 +85,6 @@ const revertTransactionBalance = async (transaction: TransactionResponse): Promi
     }
 };
 
-// Aplica o impacto de uma nova transação no saldo das contas envolvidas.
 const applyTransactionBalance = async (transaction: TransactionResponse): Promise<void> => {
     const amount = Number(transaction.amount);
 
@@ -106,15 +102,12 @@ const applyTransactionBalance = async (transaction: TransactionResponse): Promis
 
 // SERVIÇOS PRINCIPAIS (CRUD)
 
-// Cria uma nova transação, valida regras e atualiza os saldos.
 export const createTransaction = async (data: CreateTransactionDTO): Promise<TransactionResponse> => {
     const type = data.type?.toUpperCase() || '';
     const amount = Math.abs(Number(data.amount));
 
-    // Validação de regras de negócio
     validateTransactionLogic(data, type);
 
-    // Inserção na base de dados
     const { data: transaction, error: txError } = await supabase
         .from('transactions')
         .insert([{
@@ -133,21 +126,17 @@ export const createTransaction = async (data: CreateTransactionDTO): Promise<Tra
 
     if (txError) throw new Error(`Failed to create transaction: ${txError.message}`);
 
-    // Associação de Tags (se existirem)
     if (data.tags && Array.isArray(data.tags) && data.tags.length > 0) {
         await tagService.linkTagsToTransaction(transaction.id, data.tags);
     }
 
-    // Atualização de Saldos
     await applyTransactionBalance(transaction as TransactionResponse);
 
     return transaction as TransactionResponse;
 };
 
-// Retorna as transações de um perfil com paginação e filtros detalhados.
 export const readTransactions = async (profile_id: string, filters?: TransactionFilters): Promise<{ data: TransactionWithDetails[]; totalCount: number }> => {
 
-    // Busca os IDs das contas pertencentes ao perfil
     const { data: accounts, error: accError } = await supabase
         .from('accounts')
         .select('id')
@@ -157,20 +146,18 @@ export const readTransactions = async (profile_id: string, filters?: Transaction
 
     const accountIds = accounts?.map(acc => acc.id) || [];
 
-    // Cláusula de Guarda (Early Return): Sem contas, não há transações
     if (accountIds.length === 0) return { data: [], totalCount: 0 };
 
-    // Constrói a Query base com relacionamentos
-    // O !inner força o Supabase a filtrar a transação caso pesquise por uma Tag específica
+    // <- AJUSTADO: Removido 'color' das tags
     const tagQuery = filters?.tagId
-        ? 'transaction_tags!inner( tags(id, name, color) )'
-        : 'transaction_tags( tags(id, name, color) )';
+        ? 'transaction_tags!inner( tags(id, name) )'
+        : 'transaction_tags( tags(id, name) )';
 
     let query = supabase
         .from('transactions')
         .select(`
             *,
-            categories (name, icon),
+            categories (name, icon, color),
             origin_account:account_id (name),
             destination_account:transfer_account_id (name),
             ${tagQuery}
@@ -178,7 +165,6 @@ export const readTransactions = async (profile_id: string, filters?: Transaction
         .in('account_id', accountIds)
         .is('deleted_at', null);
 
-    // Aplicação Dinâmica de Filtros
     if (filters?.type) query = query.eq('type', filters.type);
     if (filters?.categoryId) query = query.eq('category_id', filters.categoryId);
     if (filters?.search) query = query.ilike('description', `%${filters.search}%`);
@@ -194,7 +180,6 @@ export const readTransactions = async (profile_id: string, filters?: Transaction
         query = query.gte('date', startDate).lte('date', endDate);
     }
 
-    // Ordenação e Paginação
     const sortBy = filters?.sortBy || 'date';
     const sortOrder = filters?.sortOrder || 'desc';
     query = query.order(sortBy, { ascending: sortOrder === 'asc' });
@@ -204,7 +189,6 @@ export const readTransactions = async (profile_id: string, filters?: Transaction
     const offset = (page - 1) * limit;
     query = query.range(offset, offset + limit - 1);
 
-    // Execução
     const { data, error: txError, count } = await query;
     if (txError) throw new Error(`Failed to fetch transactions: ${txError.message}`);
 
@@ -214,10 +198,8 @@ export const readTransactions = async (profile_id: string, filters?: Transaction
     };
 };
 
-// Atualiza uma transação, garantindo que os saldos antigos são revertidos e os novos aplicados.
 export const updateTransaction = async (id: string, newData: Partial<CreateTransactionDTO>): Promise<TransactionResponse> => {
 
-    // Busca o estado atual da transação
     const { data: oldTx, error: fetchError } = await supabase
         .from('transactions')
         .select('*')
@@ -225,14 +207,12 @@ export const updateTransaction = async (id: string, newData: Partial<CreateTrans
         .single();
 
     if (fetchError || !oldTx) throw new Error('Transaction not found.');
-    // Mescla os dados para validar o estado final ANTES de alterar a base de dados
+
     const mergedData = { ...oldTx, ...newData };
     validateTransactionLogic(mergedData, mergedData.type);
 
-    // 3. Reverte o impacto financeiro da transação antiga
     await revertTransactionBalance(oldTx as TransactionResponse);
 
-    // Atualiza a transação na base de dados
     const { data: updatedTx, error: updateError } = await supabase
         .from('transactions')
         .update(newData)
@@ -242,7 +222,6 @@ export const updateTransaction = async (id: string, newData: Partial<CreateTrans
 
     if (updateError) throw new Error(`Failed to update transaction: ${updateError.message}`);
 
-    // Aplica o impacto financeiro da nova transação
     await applyTransactionBalance(updatedTx as TransactionResponse);
 
     // TODO: Adicionar lógica para atualizar Tags caso venham no 'newData'
@@ -250,7 +229,6 @@ export const updateTransaction = async (id: string, newData: Partial<CreateTrans
     return updatedTx as TransactionResponse;
 };
 
-// Remove (Soft Delete) uma transação e reverte o seu impacto no saldo.
 export const deleteTransaction = async (id: string): Promise<void> => {
 
     const { data: transaction, error: fetchError } = await supabase
@@ -262,10 +240,8 @@ export const deleteTransaction = async (id: string): Promise<void> => {
 
     if (fetchError || !transaction) throw new Error('Transaction not found or already deleted.');
 
-    // Reverte o impacto financeiro da transação antes de aplicar o Soft Delete
     await revertTransactionBalance(transaction as TransactionResponse);
 
-    // Aplica o Soft Delete
     const { error: deleteError } = await supabase
         .from('transactions')
         .update({
