@@ -1,16 +1,18 @@
 import type { Request, Response } from 'express';
 import * as transactionService from '../services/transactionService.js';
 import type { CreateTransactionDTO, TransactionFilters } from '../models/transactionModel.js';
-import { getErrorMessage, isValidNonEmptyString, sendBadRequest } from '../utils/controllerHelpers.js';
+import { getErrorMessage, sendBadRequest } from '../utils/controllerHelpers.js';
+import { validateCreateTransaction, validateProfileIdQuery, validateTransactionId } from '../utils/validators/transactionValidator.js';
 
 // Cria uma nova transação.
 export const createTransaction = async (req: Request, res: Response): Promise<void> => {
     try {
         const body = req.body as CreateTransactionDTO;
 
-        // Validação de Defesa (Fail-Fast)
-        if (!body.account_id || !body.type || !body.amount || !body.date) {
-            sendBadRequest(res, 'Campos obrigatórios em falta: account_id, type, amount, date.');
+        // Validação de campos obrigatórios (Fail-Fast).
+        const validation = validateCreateTransaction(body);
+        if (!validation.isValid) {
+            sendBadRequest(res, validation.message!);
             return;
         }
 
@@ -31,9 +33,10 @@ export const readTransactions = async (req: Request, res: Response): Promise<voi
     try {
         const profile_id = req.query.profile_id;
 
-        // Validação de Defesa
-        if (!isValidNonEmptyString(profile_id)) {
-            sendBadRequest(res, 'O parâmetro profile_id é obrigatório na URL.');
+        // Validação do parâmetro obrigatório profile_id.
+        const validation = validateProfileIdQuery(profile_id);
+        if (!validation.isValid) {
+            sendBadRequest(res, validation.message!);
             return;
         }
 
@@ -54,7 +57,7 @@ export const readTransactions = async (req: Request, res: Response): Promise<voi
         if (req.query.sortOrder) filters.sortOrder = String(req.query.sortOrder) as 'asc' | 'desc';
 
         // Delegação ao Service
-        const transactions = await transactionService.readTransactions(profile_id, filters);
+        const transactions = await transactionService.readTransactions(profile_id as string, filters);
 
         // Resposta Estruturada
         res.status(200).json({
@@ -75,9 +78,10 @@ export const readTransactionById = async (req: Request, res: Response): Promise<
     try {
         const id = req.params.id as string;
 
-        // Validação de Defesa do ID
-        if (!isValidNonEmptyString(id)) {
-            sendBadRequest(res, 'Invalid transaction ID.');
+        // Validação do parâmetro obrigatório id.
+        const validation = validateTransactionId(id);
+        if (!validation.isValid) {
+            sendBadRequest(res, validation.message!);
             return;
         }
 
@@ -101,9 +105,10 @@ export const updateTransaction = async (req: Request, res: Response): Promise<vo
         const id = req.params.id as string;
         const body = req.body as Partial<CreateTransactionDTO>;
 
-        // 1. Validação do ID
-        if (!isValidNonEmptyString(id)) {
-            sendBadRequest(res, 'ID da transação inválido.');
+        // Validação do parâmetro obrigatório id.
+        const validation = validateTransactionId(id);
+        if (!validation.isValid) {
+            sendBadRequest(res, validation.message!);
             return;
         }
 
@@ -126,9 +131,10 @@ export const deleteTransaction = async (req: Request, res: Response): Promise<vo
     try {
         const id = req.params.id as string;
 
-        // 1. Validação do ID
-        if (!isValidNonEmptyString(id)) {
-            sendBadRequest(res, 'ID da transação inválido.');
+        // Validação do parâmetro obrigatório id.
+        const validation = validateTransactionId(id);
+        if (!validation.isValid) {
+            sendBadRequest(res, validation.message!);
             return;
         }
 
