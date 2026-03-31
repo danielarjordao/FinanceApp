@@ -12,7 +12,9 @@ export class GreetingPipe implements PipeTransform {
     // Returna saudação apropriada com o nome do utilizador
     if (hour >= 5 && hour < 12) {
       return `Good morning, ${userName}`;
-    } else if (hour >= 12 && hour < 18) {
+    }
+
+    if (hour >= 12 && hour < 18) {
       return `Good afternoon, ${userName}`;
     }
 
