@@ -22,7 +22,7 @@ export const createTag = async (tagData: CreateTagDTO): Promise<TagResponse> => 
         .single();
 
     if (error)
-		throw new Error(`Database error: ${error.message}`);
+        throw new Error(`Database error: ${error.message}`);
     return data as TagResponse;
 };
 
@@ -35,7 +35,7 @@ export const readTags = async (profile_id: string): Promise<TagResponse[]> => {
         .is('deleted_at', null);
 
     if (error)
-		throw new Error(`Database error: ${error.message}`);
+        throw new Error(`Database error: ${error.message}`);
     return data as TagResponse[];
 };
 
@@ -65,21 +65,18 @@ export const deleteTag = async (id: string): Promise<void> => {
         .eq('id', id);
 
     if (error)
-		throw new Error(`Error deleting tag: ${error.message}`);
+        throw new Error(`Error deleting tag: ${error.message}`);
 };
 
-// Função para linkar tags a uma transação, inserindo os registros na tabela de junção transaction_tags
+// Função para linkar tags a uma transação
 export const linkTagsToTransaction = async (transactionId: string, tagIds: string[]): Promise<void> => {
-    // Valida se há tags para linkar
     if (!tagIds || tagIds.length === 0) return;
 
-    // Prepara os dados para inserção em massa na tabela de junção
     const tagAssociations = tagIds.map(tagId => ({
         transaction_id: transactionId,
         tag_id: tagId
     }));
 
-    // Insere as associações na tabela de junção
     const { error } = await supabase
         .from('transaction_tags')
         .insert(tagAssociations);
