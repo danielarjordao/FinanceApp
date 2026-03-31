@@ -1,0 +1,69 @@
+<div class="page-container">
+  <div class="profile-card">
+    <div class="header-row">
+      <h2>Personal Details</h2>
+    </div>
+
+    <p class="subtitle">
+      {{ isReadOnly ? 'Review your personal details.' : 'Update your personal details and password.' }}
+    </p>
+
+    <form [formGroup]="userInfoForm" (ngSubmit)="onSubmit()" class="form-layout">
+      <div class="name-row">
+        <div class="form-group">
+          <label for="firstName">First Name</label>
+          <input type="text" id="firstName" formControlName="firstName" autocomplete="given-name">
+        </div>
+
+        <div class="form-group">
+          <label for="lastName">Last Name</label>
+          <input type="text" id="lastName" formControlName="lastName" autocomplete="family-name">
+        </div>
+      </div>
+
+      <!-- Mostra a senha apenas em modo de edicao -->
+      @if (!isReadOnly) {
+        <div class="form-group">
+          <label for="password">New Password</label>
+          <input type="password" id="password" formControlName="password" placeholder="Leave blank to keep current password" autocomplete="new-password">
+        </div>
+      }
+
+      @if (successMessage) {
+        <div class="success-message">
+          <span class="material-symbols-outlined">check_circle</span>
+          {{ successMessage }}
+        </div>
+      }
+
+      @if (errorMessage) {
+        <div class="error-message">
+          <span class="material-symbols-outlined">error</span>
+          {{ errorMessage }}
+        </div>
+      }
+
+      <div class="form-actions">
+        <!-- Modo somente leitura -->
+        @if (isReadOnly) {
+          <button type="button" class="btn-primary" (click)="enableEditing()">
+            <span class="material-symbols-outlined">edit</span>
+            Edit User Info
+          </button>
+        }
+
+        <!-- Modo edicao -->
+        @if (!isReadOnly) {
+          <button type="button" class="btn-secondary" (click)="cancelEditing()">
+            Cancel
+          </button>
+
+          <button type="submit" class="btn-primary" [disabled]="userInfoForm.invalid || isLoading">
+            <span class="material-symbols-outlined">save</span>
+            {{ isLoading ? 'Saving...' : 'Save Changes' }}
+          </button>
+        }
+      </div>
+    </form>
+  </div>
+</div>
