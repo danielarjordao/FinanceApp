@@ -1,8 +1,8 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
-import { Subject, takeUntil } from 'rxjs';
+import { Router, ActivatedRoute } from '@angular/router';
+import { Subject, takeUntil, forkJoin, filter } from 'rxjs';
 
 import { TransactionService } from '../../services/transaction';
 import { AccountService } from '../../services/account';
@@ -23,26 +23,33 @@ import { Tag } from '../../models/tag';
   styleUrls: ['./transaction-form.css']
 })
 export class TransactionForm implements OnInit, OnDestroy {
-  // Serviços
   private transactionService = inject(TransactionService);
   private accountService = inject(AccountService);
   private categoryService = inject(CategoryService);
   private tagService = inject(TagService);
   private profileService = inject(ProfileService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute); // Para capturar o ID da rota
+  private cdr = inject(ChangeDetectorRef);
 
-  // Dados para dropdowns e seleções
   accounts: Account[] = [];
   allCategories: Category[] = [];
   filteredCategories: Category[] = [];
   tags: Tag[] = [];
 
-  // Estados de UI
+  // --- Estados do CRUD ---
   isLoading = false;
+  isCreatingTag = false;
   errorMessage = '';
+  isEditMode = false;
+  isReadOnly = false;
+  transactionId: string | null = null;
+
+  private currentProfileId: string | null = null;
   private destroy$ = new Subject<void>();
 
-  // Formulário reativo para criação/edição de transações
+  newTagCtrl = new FormControl('');
+
   transactionForm = new FormGroup({
     type: new FormControl<'INCOME' | 'EXPENSE' | 'TRANSFER'>('EXPENSE', { nonNullable: true, validators: [Validators.required] }),
     amount: new FormControl<number | null>(null, [Validators.required, Validators.min(0.01)]),
@@ -56,42 +63,161 @@ export class TransactionForm implements OnInit, OnDestroy {
   });
 
   ngOnInit() {
-    // Carrega os dados necessários para o formulário (contas, categorias, tags) com base no perfil ativo
+    this.checkIfEditMode();
+
     this.profileService.currentProfile$
-      .pipe(takeUntil(this.destroy$))
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(profile => !!profile)
+      )
       .subscribe(profile => {
-        if (profile) {
-          this.loadFormData(profile.id);
-        }
+        this.currentProfileId = profile!.id;
+        this.loadFormData(this.currentProfileId);
       });
 
-    // Fica à escuta de mudanças no tipo de transação para ajustar a validação e os campos exibidos dinamicamente
     this.transactionForm.get('type')?.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(type => {
         this.updateValidationSchema(type);
         this.filterCategoriesByType(type);
+        this.cdr.markForCheck();
       });
   }
 
-  // Limpa os recursos e subscrições quando o componente é destruído
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
   }
 
+  // --- LÓGICA DO CRUD ---
+
+  checkIfEditMode() {
+    this.transactionId = this.route.snapshot.paramMap.get('id');
+
+    if (this.transactionId && this.transactionId !== 'new') {
+      this.isEditMode = true;
+      this.isReadOnly = true;
+      this.transactionForm.disable();
+
+      this.transactionService.getTransactionById(this.transactionId).subscribe({
+        next: (response: any) => {
+          console.log('📦 A aceder ao nível correto:', response.data);
+
+          const txData = response.data; // O objeto real está aqui dentro!
+
+          // O input date aceita o formato YYYY-MM-DD que já vem do teu backend
+          const formattedDate = txData.date;
+
+          this.transactionForm.patchValue({
+            type: txData.type,
+            amount: txData.amount,
+            date: formattedDate,
+            account_id: txData.account_id,
+            category_id: txData.category_id,
+            transfer_account_id: txData.transfer_account_id,
+            description: txData.description || '',
+            status: txData.status || 'COMPLETED'
+          });
+
+          // Tratamento das Tags
+          if (txData.transaction_tags) {
+            const tagIds = txData.transaction_tags.map((tt: any) => tt.tags.id);
+            this.transactionForm.get('tags')?.setValue(tagIds);
+          }
+
+          this.cdr.detectChanges();
+        },
+        error: (err) => console.error('❌ Erro no Fetch:', err)
+      });
+    }
+  }
+
+  enableEditing() {
+    this.isReadOnly = false;
+    this.transactionForm.enable();
+  }
+
+  onDelete() {
+    if (!this.transactionId) return;
+
+    // Substitui pelo teu ModalService se quiseres manter o padrão do teu outro projeto!
+    if (confirm('Are you sure you want to delete this transaction?')) {
+      this.isLoading = true;
+      this.transactionService.deleteTransaction(this.transactionId).subscribe({
+        next: () => this.goBack(),
+        error: (err) => {
+          this.errorMessage = 'Failed to delete transaction.';
+          this.isLoading = false;
+          this.cdr.markForCheck();
+        }
+      });
+    }
+  }
+
+  onSubmit() {
+    if (this.transactionForm.invalid) {
+      this.transactionForm.markAllAsTouched();
+      return;
+    }
+
+    this.isLoading = true;
+    const rawValue = this.transactionForm.getRawValue();
+
+    // 1. Criamos o corpo da transação respeitando a interface Transaction
+    // Usamos o operador '|| undefined' para converter nulls em undefined
+    const transactionData: Partial<Transaction> = {
+      type: rawValue.type,
+      amount: rawValue.amount ?? 0,
+      date: rawValue.date,
+      account_id: rawValue.account_id ?? '',
+      description: rawValue.description || undefined,
+      status: rawValue.status || 'COMPLETED',
+      category_id: rawValue.category_id || undefined,
+      transfer_account_id: rawValue.transfer_account_id || undefined,
+    };
+
+    // 2. Criamos um "Payload" que estende a Transaction para incluir as tags
+    // que o Backend vai processar separadamente
+    const payload = {
+      ...transactionData,
+      tags: rawValue.tags || []
+    };
+
+    if (this.isEditMode && this.transactionId) {
+      this.transactionService.updateTransaction(this.transactionId, payload as Transaction).subscribe({
+        next: () => this.goBack(),
+        error: (err) => this.handleError(err)
+      });
+    } else {
+      this.transactionService.createTransaction(payload as Transaction).subscribe({
+        next: () => this.goBack(),
+        error: (err) => this.handleError(err)
+      });
+    }
+  }
+
+  private handleError(err: any) {
+    this.isLoading = false;
+    this.errorMessage = err.error?.message || 'Action failed.';
+    this.cdr.markForCheck();
+  }
+
+  // --- GESTÃO DE DADOS (Mantém a lógica intacta) ---
+
   private loadFormData(profileId: string) {
-    // Carrega as contas associadas ao perfil ativo para popular o dropdown de seleção de conta
-    this.accountService.getAccounts(profileId).subscribe(data => this.accounts = data);
-
-    // Carrega as categorias associadas ao perfil ativo para popular o dropdown de seleção de categoria, filtrando posteriormente pelo tipo de transação
-    this.categoryService.getCategories(profileId).subscribe(data => {
-      this.allCategories = data;
-      this.filterCategoriesByType(this.transactionForm.get('type')?.value || 'EXPENSE');
+    forkJoin({
+      accounts: this.accountService.getAccounts(profileId),
+      categories: this.categoryService.getCategories(profileId),
+      tags: this.tagService.getTags(profileId)
+    }).subscribe({
+      next: (data) => {
+        this.accounts = data.accounts;
+        this.allCategories = data.categories;
+        this.tags = data.tags;
+        this.filterCategoriesByType(this.transactionForm.get('type')?.value || 'EXPENSE');
+        this.cdr.markForCheck();
+      }
     });
-
-    // Carrega as tags associadas ao perfil ativo para permitir a seleção de tags na
-    this.tagService.getTags(profileId).subscribe(data => this.tags = data);
   }
 
   private updateValidationSchema(type: 'INCOME' | 'EXPENSE' | 'TRANSFER') {
@@ -111,7 +237,6 @@ export class TransactionForm implements OnInit, OnDestroy {
   }
 
   private filterCategoriesByType(type: string) {
-    // Filtra as categorias para exibir apenas as relevantes ao tipo de transação selecionado (INCOME ou EXPENSE). Para TRANSFER, não exibe categorias.
     if (type === 'TRANSFER') {
       this.filteredCategories = [];
     } else {
@@ -119,40 +244,47 @@ export class TransactionForm implements OnInit, OnDestroy {
     }
   }
 
-onSubmit() {
-  if (this.transactionForm.invalid) {
-    this.transactionForm.markAllAsTouched();
-    return;
+  // --- LÓGICA DE GESTÃO DE TAGS DIRETA NO FORMULÁRIO ---
+
+  addTag() {
+    const name = this.newTagCtrl.value?.trim();
+    if (!name || !this.currentProfileId) return;
+
+    this.isCreatingTag = true;
+    this.tagService.createTag({ name, profile_id: this.currentProfileId }).subscribe({
+      next: (newTag) => {
+        this.tags = [...this.tags, newTag]; // Atualiza a lista visual
+        this.newTagCtrl.reset();
+        this.toggleTag(newTag.id); // Seleciona automaticamente a tag acabada de criar
+        this.isCreatingTag = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.isCreatingTag = false;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
-  this.isLoading = true;
-  const rawValue = this.transactionForm.getRawValue();
+  removeTag(tagId: string, event: Event) {
+    event.stopPropagation(); // Evita que o click ative a seleção da tag ao mesmo tempo
 
-  // Mapeamento manual para garantir compatibilidade total de tipos
-  const data: Partial<Transaction> = {
-    type: rawValue.type,
-    amount: rawValue.amount || 0,
-    date: rawValue.date,
-    account_id: rawValue.account_id || '',
-    description: rawValue.description || '',
-    status: rawValue.status || 'COMPLETED',
+    if (confirm('Are you sure you want to delete this tag?')) {
+      this.tagService.deleteTag(tagId).subscribe({
+        next: () => {
+          // Remove da lista de tags disponíveis
+          this.tags = this.tags.filter(t => t.id !== tagId);
 
-    // Campos que podem ser null no formulário mas o Model quer string/undefined
-    category_id: rawValue.category_id || undefined,
-    transfer_account_id: rawValue.transfer_account_id || undefined,
+          // Remove do formulário caso estivesse selecionada
+          const control = this.transactionForm.get('tags');
+          const currentSelection = control?.value || [];
+          control?.setValue(currentSelection.filter(id => id !== tagId));
 
-    // Se o teu backend espera apenas os IDs das tags:
-    tags: rawValue.tags ? rawValue.tags.map(tagId => ({ name: tagId })) : []
-  };
-
-  this.transactionService.createTransaction(data).subscribe({
-    next: () => this.goBack(),
-    error: (err) => {
-      this.isLoading = false;
-      this.errorMessage = err.error?.message || 'Failed to save transaction.';
+          this.cdr.markForCheck();
+        }
+      });
     }
-  });
-}
+  }
 
   toggleTag(tagId: string) {
     const control = this.transactionForm.get('tags');
