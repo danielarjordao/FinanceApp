@@ -7,3 +7,4 @@ tem algum bug quando atualizo uma despesa ou receita para transferencia e vice-v
 Alguns campos como categoria e account nao estao dando mensagens de erro quando nao estao validados
 as tags so atualizam nos filtros quando da f5
 quando atualizo, os filtros voltam a zero
+o cogigo nao verifica o modo dark ou light mode do usuario quando faz o login
