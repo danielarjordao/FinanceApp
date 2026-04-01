@@ -5,11 +5,12 @@ import { filter } from 'rxjs';
 import { Sidebar } from './resources/sidebar/sidebar';
 import { Header } from './resources/header/header';
 import { Footer } from './resources/footer/footer';
+import { ConfirmModalComponent } from './resources/confirm-modal/confirm-modal';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, Sidebar, Header, Footer],
+  imports: [RouterOutlet, Sidebar, Header, Footer, ConfirmModalComponent],
   templateUrl: './app.html',
   styleUrls: ['./app.css']
 })
