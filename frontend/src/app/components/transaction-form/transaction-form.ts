@@ -2,13 +2,14 @@ import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angula
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { Subject, takeUntil, forkJoin, filter } from 'rxjs';
+import { Subject, takeUntil, forkJoin, filter, take } from 'rxjs';
 
 import { TransactionService } from '../../services/transaction';
 import { AccountService } from '../../services/account';
 import { CategoryService } from '../../services/category';
 import { TagService } from '../../services/tag';
 import { ProfileService } from '../../services/profile';
+import { ConfirmModalService } from '../../services/confirm-modal';
 
 import { Transaction, TransactionWithDetails } from '../../models/transaction';
 import { Account } from '../../models/account';
@@ -28,6 +29,7 @@ export class TransactionForm implements OnInit, OnDestroy {
   private categoryService = inject(CategoryService);
   private tagService = inject(TagService);
   private profileService = inject(ProfileService);
+  private confirmModal = inject(ConfirmModalService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
@@ -140,17 +142,29 @@ export class TransactionForm implements OnInit, OnDestroy {
   onDelete(): void {
     if (!this.transactionId) return;
 
-    if (confirm('Are you sure you want to delete this transaction?')) {
-      this.isLoading = true;
-      this.transactionService.deleteTransaction(this.transactionId).subscribe({
-        next: () => this.goBack(),
-        error: (err) => {
-          this.errorMessage = 'Failed to delete transaction.';
-          this.isLoading = false;
-          this.cdr.markForCheck();
+    this.confirmModal.confirm({
+      title: 'Delete transaction',
+      message: 'Are you sure you want to delete this transaction?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      isDestructive: true,
+    })
+      .pipe(take(1), takeUntil(this.destroy$))
+      .subscribe(confirmed => {
+        if (!confirmed) {
+          return;
         }
+
+        this.isLoading = true;
+        this.transactionService.deleteTransaction(this.transactionId!).subscribe({
+          next: () => this.goBack(),
+          error: () => {
+            this.errorMessage = 'Failed to delete transaction.';
+            this.isLoading = false;
+            this.cdr.markForCheck();
+          }
+        });
       });
-    }
   }
 
   // Monta payload da transação a partir do formulário.
@@ -292,19 +306,31 @@ export class TransactionForm implements OnInit, OnDestroy {
   removeTag(tagId: string, event: Event): void {
     event.stopPropagation();
 
-    if (confirm('Are you sure you want to delete this tag?')) {
-      this.tagService.deleteTag(tagId).subscribe({
-        next: () => {
-          this.tags = this.tags.filter(t => t.id !== tagId);
-
-          const control = this.transactionForm.get('tags');
-          const currentSelection = control?.value || [];
-          control?.setValue(currentSelection.filter(id => id !== tagId));
-
-          this.cdr.markForCheck();
+    this.confirmModal.confirm({
+      title: 'Delete tag',
+      message: 'Are you sure you want to delete this tag?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      isDestructive: true,
+    })
+      .pipe(take(1), takeUntil(this.destroy$))
+      .subscribe(confirmed => {
+        if (!confirmed) {
+          return;
         }
+
+        this.tagService.deleteTag(tagId).subscribe({
+          next: () => {
+            this.tags = this.tags.filter(t => t.id !== tagId);
+
+            const control = this.transactionForm.get('tags');
+            const currentSelection = control?.value || [];
+            control?.setValue(currentSelection.filter(id => id !== tagId));
+
+            this.cdr.markForCheck();
+          }
+        });
       });
-    }
   }
 
   // Alterna seleção de tag no formulário (somente em modo editável).
