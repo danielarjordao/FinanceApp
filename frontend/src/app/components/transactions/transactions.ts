@@ -1,20 +1,40 @@
 import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
-import { CommonModule, DatePipe, CurrencyPipe } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
-import { Subject, takeUntil, debounceTime, distinctUntilChanged, filter } from 'rxjs';
+import { Subject, takeUntil, debounceTime, filter, pairwise, startWith } from 'rxjs';
 import { Router } from '@angular/router';
 
 import { TransactionService } from '../../services/transaction';
 import { TagService } from '../../services/tag';
+import { CategoryService } from '../../services/category';
+import { AccountService } from '../../services/account';
 import { ProfileService } from '../../services/profile';
+import { PreferencesService } from '../../services/preferences';
+import { LoadingIndicator } from '../../resources/loading-indicator/loading-indicator';
 
-import { TransactionWithDetails } from '../../models/transaction';
+import { TransactionFilters, TransactionWithDetails } from '../../models/transaction';
 import { Tag } from '../../models/tag';
+import { Account } from '../../models/account';
+import { Category } from '../../models/category';
+
+type TransactionsFilterFormValue = {
+  search: string | null;
+  type: string | null;
+  tagId: string | null;
+  categoryId: string | null;
+  accountId: string | null;
+  month: number | null;
+  year: number | null;
+  page: number | null;
+  limit: number | null;
+  sortBy: string | null;
+  sortOrder: string | null;
+};
 
 @Component({
   selector: 'app-transactions',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DatePipe, CurrencyPipe],
+  imports: [CommonModule, ReactiveFormsModule, DatePipe, LoadingIndicator],
   templateUrl: './transactions.html',
   styleUrls: ['./transactions.css']
 })
@@ -22,11 +42,16 @@ export class Transactions implements OnInit, OnDestroy {
   private router = inject(Router);
   private transactionService = inject(TransactionService);
   private tagService = inject(TagService);
+  private accountService = inject(AccountService);
+  private categoryService = inject(CategoryService);
   private profileService = inject(ProfileService);
+  private preferences = inject(PreferencesService);
   private cdr = inject(ChangeDetectorRef);
 
   transactions: TransactionWithDetails[] = [];
   tags: Tag[] = [];
+  accounts: Account[] = [];
+  categories: Category[] = [];
   totalRecords: number = 0;
   isLoading: boolean = true;
   errorMessage: string = '';
@@ -38,10 +63,25 @@ export class Transactions implements OnInit, OnDestroy {
   private currentProfileId: string | null = null;
   Math = Math;
 
+  // Cabeçalhos padrão para exportação CSV.
+  private readonly csvHeaders = [
+    'Data',
+    'Descrição',
+    'Tipo',
+    'Categoria',
+    'Conta Origem',
+    'Conta Destino',
+    'Valor',
+    'Status',
+    'Tags'
+  ];
+
   filterForm = new FormGroup({
     search: new FormControl<string>(''),
     type: new FormControl<string>(''),
     tagId: new FormControl<string>(''),
+    categoryId: new FormControl<string>(''),
+    accountId: new FormControl<string>(''),
     month: new FormControl<number>(new Date().getMonth() + 1),
     year: new FormControl<number>(new Date().getFullYear()),
     page: new FormControl<number>(1),
@@ -51,6 +91,13 @@ export class Transactions implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    this.preferences.preferences$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.cdr.markForCheck();
+      });
+
+    // Observa o perfil atual para carregar dados contextuais da página.
     this.profileService.currentProfile$
       .pipe(
         takeUntil(this.destroy$),
@@ -58,20 +105,31 @@ export class Transactions implements OnInit, OnDestroy {
       )
       .subscribe(profile => {
         this.currentProfileId = profile!.id;
-        this.loadData(this.currentProfileId);
+        this.loadInitialData(this.currentProfileId);
       });
 
+    // Observa alterações dos filtros e dispara nova leitura paginada.
     this.filterForm.valueChanges
       .pipe(
         takeUntil(this.destroy$),
         debounceTime(400),
-        distinctUntilChanged()
+        startWith(this.filterForm.getRawValue()),
+        pairwise(),
       )
-      .subscribe(() => {
+      .subscribe(([previous, current]) => {
         if (this.currentProfileId) {
+          if (this.shouldResetPage(previous, current) && (current.page ?? 1) !== 1) {
+            this.filterForm.patchValue({ page: 1 }, { emitEvent: false });
+          }
+
           this.loadTransactions();
         }
       });
+  }
+
+  // Formata valor usando locale e moeda dinâmicos.
+  formatCurrency(value: number): string {
+    return this.preferences.formatCurrency(value);
   }
 
   ngOnDestroy(): void {
@@ -83,21 +141,20 @@ export class Transactions implements OnInit, OnDestroy {
     this.showFilters = !this.showFilters;
   }
 
-  private loadData(profileId: string): void {
+  // Carrega dados iniciais (tags + transações) para o perfil ativo.
+  private loadInitialData(profileId: string): void {
     this.loadTags(profileId);
     this.loadTransactions();
+    this.loadCategories(profileId);
+    this.loadAccounts(profileId);
   }
 
-  loadTransactions(): void {
-    if (!this.currentProfileId) return;
-
-    this.isLoading = true;
-    this.errorMessage = '';
-
+  // Constrói filtros da API a partir do estado atual do formulário.
+  private buildTransactionFilters(): TransactionFilters {
     const formValues = this.filterForm.getRawValue();
 
-    const filters = {
-      profile_id: this.currentProfileId,
+    return {
+      profile_id: this.currentProfileId || undefined,
       month: formValues.month ?? undefined,
       year: formValues.year ?? undefined,
       type: formValues.type || undefined,
@@ -106,10 +163,35 @@ export class Transactions implements OnInit, OnDestroy {
       limit: formValues.limit ?? 20,
       sortBy: formValues.sortBy || 'date',
       sortOrder: formValues.sortOrder || 'desc',
-      tagId: formValues.tagId || undefined
+      tagId: formValues.tagId || undefined,
+      categoryId: formValues.categoryId || undefined,
+      accountId: formValues.accountId || undefined,
     };
+  }
 
-    this.transactionService.getTransactions(filters).subscribe({
+  // Reinicia a paginação quando filtros de conteúdo mudam.
+  private shouldResetPage(previous: Partial<TransactionsFilterFormValue>, current: Partial<TransactionsFilterFormValue>): boolean {
+    return (previous.search ?? null) !== (current.search ?? null)
+      || (previous.type ?? null) !== (current.type ?? null)
+      || (previous.tagId ?? null) !== (current.tagId ?? null)
+      || (previous.categoryId ?? null) !== (current.categoryId ?? null)
+      || (previous.accountId ?? null) !== (current.accountId ?? null)
+      || (previous.month ?? null) !== (current.month ?? null)
+      || (previous.year ?? null) !== (current.year ?? null)
+      || (previous.sortBy ?? null) !== (current.sortBy ?? null)
+      || (previous.sortOrder ?? null) !== (current.sortOrder ?? null)
+      || (previous.limit ?? null) !== (current.limit ?? null);
+  }
+
+  loadTransactions(): void {
+    if (!this.currentProfileId) return;
+
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    const filters = this.buildTransactionFilters();
+
+    this.transactionService.getTransactions(this.currentProfileId, filters).subscribe({
       next: (response) => {
         this.transactions = response.data;
         this.totalRecords = response.total;
@@ -135,46 +217,58 @@ export class Transactions implements OnInit, OnDestroy {
     });
   }
 
+  loadCategories(profileId: string): void {
+    this.categoryService.getCategories(profileId).subscribe({
+      next: (categories) => {
+        this.categories = categories;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  loadAccounts(profileId: string): void {
+    this.accountService.getAccounts(profileId).subscribe({
+      next: (accounts) => {
+        this.accounts = accounts;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  // Resolve a classe de cor do ícone com base no tipo da transação.
+  getTransactionIconClass(tx: TransactionWithDetails): string {
+    if (tx.type === 'INCOME') return 'tx-icon-income';
+    if (tx.type === 'EXPENSE') return 'tx-icon-expense';
+    return 'tx-icon-transfer';
+  }
+
+  // Mapeia uma transação para uma linha CSV no padrão da aplicação.
+  private mapTransactionToCsvRow(tx: TransactionWithDetails): string {
+    const tagsNames = tx.transaction_tags
+      ? tx.transaction_tags.map((tt) => tt.tags.name).join('; ')
+      : '';
+
+    return [
+      tx.date,
+      `"${tx.description || ''}"`,
+      tx.type,
+      `"${tx.categories?.name || 'Sem Categoria'}"`,
+      `"${tx.origin_account?.name || ''}"`,
+      `"${tx.destination_account?.name || ''}"`,
+      tx.amount,
+      tx.status,
+      `"${tagsNames}"`
+    ].join(';');
+  }
+
   exportToCsv(): void {
     if (this.transactions.length === 0) return;
 
-    // 1. Definir os cabeçalhos do CSV
-    const headers = [
-      'Data',
-      'Descrição',
-      'Tipo',
-      'Categoria',
-      'Conta Origem',
-      'Conta Destino',
-      'Valor',
-      'Status',
-      'Tags'
-    ];
+    // Constrói conteúdo CSV no formato separado por ponto e vírgula.
+    const csvRows = this.transactions.map((tx) => this.mapTransactionToCsvRow(tx));
+    const csvContent = [this.csvHeaders.join(';'), ...csvRows].join('\n');
 
-    // 2. Mapear os dados das transações
-    const csvRows = this.transactions.map(tx => {
-      // Tratamento das Tags: junta os nomes por vírgula
-      const tagsNames = tx.transaction_tags
-        ? tx.transaction_tags.map((tt: any) => tt.tags.name).join('; ')
-        : '';
-
-      return [
-        tx.date,
-        `"${tx.description || ''}"`, // Aspas para evitar quebras se houver vírgulas no texto
-        tx.type,
-        `"${tx.categories?.name || 'Sem Categoria'}"`,
-        `"${tx.origin_account?.name || ''}"`,
-        `"${tx.destination_account?.name || ''}"`,
-        tx.amount,
-        tx.status,
-        `"${tagsNames}"`
-      ].join(';');
-    });
-
-    // 3. Juntar cabeçalho e linhas
-    const csvContent = [headers.join(';'), ...csvRows].join('\n');
-
-    // 4. Criar o ficheiro e disparar o download
+    // Cria o ficheiro e dispara o download no navegador.
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -194,6 +288,8 @@ export class Transactions implements OnInit, OnDestroy {
   }
 
   openTransactionDetails(id: string): void {
-  this.router.navigate(['/transactions/edit', id]);
+    this.router.navigate(['/transactions/edit', id]);
   }
+
+  // TODO(transactions-planning): Implementar ações de parcelamento e recorrência | Done when: fluxos e serviços de installments/recurring estiverem integrados.
 }

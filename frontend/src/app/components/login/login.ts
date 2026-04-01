@@ -1,107 +1,158 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Auth } from '../../services/auth';
-import { Logo } from '../../resources/logo/logo';
 import { Footer } from '../../resources/footer/footer';
+import { Logo } from '../../resources/logo/logo';
+
+type LoginForm = FormGroup<{
+  firstName: FormControl<string>;
+  lastName: FormControl<string>;
+  email: FormControl<string>;
+  password: FormControl<string>;
+}>;
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, Logo, Footer],
   templateUrl: './login.html',
-  styleUrls: ['./login.css']
+  styleUrls: ['./login.css'],
 })
 export class Login implements OnInit {
-  private router = inject(Router);
-  private authService = inject(Auth);
+  private readonly router = inject(Router);
+  private readonly authService = inject(Auth);
+  private readonly darkThemeClass = 'dark';
 
   isRegistering = false;
   errorMessage = '';
   isDarkMode = false;
+  isLoading = false;
 
-  // Instanciação direta do formulário
-  loginForm = new FormGroup({
-    firstName: new FormControl(''),
-    lastName: new FormControl(''),
-    email: new FormControl('', [
-      Validators.required,
-      Validators.email
-    ]),
-    password: new FormControl('', [
-      Validators.required,
-      Validators.minLength(6)
-    ])
-  });
+  // Formulario de autenticacao.
+  loginForm: LoginForm = this.createLoginForm();
 
   ngOnInit(): void {
-    this.isDarkMode = document.body.classList.contains('dark-theme');
+    this.isDarkMode = document.body.classList.contains(this.darkThemeClass);
+    this.applyRegisterValidators();
   }
 
-  toggleTheme() {
+  // Alterna o tema visual da pagina.
+  toggleTheme(): void {
     this.isDarkMode = !this.isDarkMode;
 
-    // Adiciona ou remove a classe 'dark' no body, que ativa as tuas variáveis do Figma
     if (this.isDarkMode) {
-      document.body.classList.add('dark');
-    } else {
-      document.body.classList.remove('dark');
+      document.body.classList.add(this.darkThemeClass);
+      return;
     }
+
+    document.body.classList.remove(this.darkThemeClass);
   }
 
-  // Método auxiliar para classes de erro no HTML
+  // Informa se o campo deve exibir erro.
   isFieldInvalid(fieldName: string): boolean {
     const field = this.loginForm.get(fieldName);
     return field ? field.invalid && (field.dirty || field.touched) : false;
   }
 
+  // Alterna entre login e cadastro.
   toggleMode(): void {
     this.isRegistering = !this.isRegistering;
     this.errorMessage = '';
-
-    // Reset ao formulário ao trocar de modo
+    this.isLoading = false;
     this.loginForm.reset();
-
-    const firstNameCtrl = this.loginForm.get('firstName');
-    const lastNameCtrl = this.loginForm.get('lastName');
-
-    if (this.isRegistering) {
-      firstNameCtrl?.setValidators([Validators.required, Validators.minLength(2), Validators.maxLength(50)]);
-      lastNameCtrl?.setValidators([Validators.required, Validators.minLength(2), Validators.maxLength(50)]);
-    } else {
-      firstNameCtrl?.clearValidators();
-      lastNameCtrl?.clearValidators();
-    }
-
-    firstNameCtrl?.updateValueAndValidity();
-    lastNameCtrl?.updateValueAndValidity();
+    this.applyRegisterValidators();
   }
 
-async onSubmit(): Promise<void> {
+  // Envia credenciais para login ou cadastro.
+  async onSubmit(): Promise<void> {
     this.errorMessage = '';
 
-    if (this.loginForm.invalid) {
-      this.loginForm.markAllAsTouched();
+    if (!this.canSubmit()) {
       return;
     }
 
-    const { email, password, firstName, lastName } = this.loginForm.getRawValue();
+    this.isLoading = true;
+
+    try {
+      if (this.isRegistering) {
+        await this.submitRegister();
+        return;
+      }
+
+      await this.submitLogin();
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  // Cria o formulario com validacoes padrao.
+  private createLoginForm(): LoginForm {
+    return new FormGroup({
+      firstName: new FormControl('', { nonNullable: true }),
+      lastName: new FormControl('', { nonNullable: true }),
+      email: new FormControl('', {
+        nonNullable: true,
+        validators: [Validators.required, Validators.email],
+      }),
+      password: new FormControl('', {
+        nonNullable: true,
+        validators: [Validators.required, Validators.minLength(6)],
+      }),
+    });
+  }
+
+  // Aplica validacoes de nome no modo cadastro.
+  private applyRegisterValidators(): void {
+    const firstNameCtrl = this.loginForm.controls.firstName;
+    const lastNameCtrl = this.loginForm.controls.lastName;
 
     if (this.isRegistering) {
-      const result = await this.authService.signUp(email as string, password as string, firstName as string, lastName as string);
-      if (result.success) {
-        this.router.navigate(['/dashboard']);
-      } else {
-        this.errorMessage = result.error || 'Erro ao registar.';
-      }
+      firstNameCtrl.setValidators([Validators.required, Validators.minLength(2), Validators.maxLength(50)]);
+      lastNameCtrl.setValidators([Validators.required, Validators.minLength(2), Validators.maxLength(50)]);
     } else {
-      const result = await this.authService.signIn(email as string, password as string);
-      if (result.success) {
-        this.router.navigate(['/dashboard']);
-      } else {
-        this.errorMessage = result.error || 'Email ou password inválidos.';
-      }
+      firstNameCtrl.clearValidators();
+      lastNameCtrl.clearValidators();
     }
+
+    firstNameCtrl.updateValueAndValidity();
+    lastNameCtrl.updateValueAndValidity();
+  }
+
+  // Garante estado valido antes de chamar API.
+  private canSubmit(): boolean {
+    if (this.loginForm.invalid) {
+      this.loginForm.markAllAsTouched();
+      return false;
+    }
+
+    return true;
+  }
+
+  // Processa o fluxo de cadastro.
+  private async submitRegister(): Promise<void> {
+    const { email, password, firstName, lastName } = this.loginForm.getRawValue();
+
+    const result = await this.authService.signUp(email, password, firstName, lastName);
+    if (result.success) {
+      this.router.navigate(['/dashboard']);
+      return;
+    }
+
+    this.errorMessage = result.error || 'Registration failed.';
+  }
+
+  // Processa o fluxo de login.
+  private async submitLogin(): Promise<void> {
+    const { email, password } = this.loginForm.getRawValue();
+
+    const result = await this.authService.signIn(email, password);
+    if (result.success) {
+      this.router.navigate(['/dashboard']);
+      return;
+    }
+
+    this.errorMessage = result.error || 'Invalid email or password.';
   }
 }

@@ -4,7 +4,7 @@
   </div>
 
   <div class="header-right">
-    <button class="icon-btn" (click)="toggleTheme()" [title]="isDarkMode ? 'Modo Claro' : 'Modo Escuro'">
+    <button class="icon-btn" (click)="toggleTheme()" [title]="isDarkMode ? 'Light mode' : 'Dark mode'">
       <span class="material-symbols-outlined">
         {{ isDarkMode ? 'light_mode' : 'dark_mode' }}
       </span>
@@ -20,45 +20,46 @@
       <div class="form-group">
         <label for="firstName">First Name</label>
         <input type="text" id="firstName" formControlName="firstName" placeholder="Your name"
-          [class.input-error]="isFieldInvalid('firstName')">
+          [class.input-error]="isFieldInvalid('firstName')" autocomplete="given-name">
         @if (isFieldInvalid('firstName')) {
           <div class="error-message">
             First name is required and must be at least 2 characters.
           </div>
         }
-		  </div>
+      </div>
+
       <div class="form-group">
         <label for="lastName">Last Name</label>
         <input type="text" id="lastName" formControlName="lastName" placeholder="Your surname"
-			    [class.input-error]="isFieldInvalid('lastName')">
+          [class.input-error]="isFieldInvalid('lastName')" autocomplete="family-name">
         @if (isFieldInvalid('lastName')) {
           <div class="error-message">
             Last name is required and must be at least 2 characters.
           </div>
         }
-		  </div>
+      </div>
     }
 
     <div class="form-group">
       <label for="email">Email Address</label>
       <input type="email" id="email" formControlName="email" placeholder="name@example.com"
-		[class.input-error]="isFieldInvalid('email')">
-	  @if (isFieldInvalid('email')) {
-		<div class="error-message">
-		  Please enter a valid email address.
-		</div>
-	  }
+        [class.input-error]="isFieldInvalid('email')" autocomplete="email">
+      @if (isFieldInvalid('email')) {
+        <div class="error-message">
+          Please enter a valid email address.
+        </div>
+      }
     </div>
 
     <div class="form-group">
       <label for="password">Password</label>
       <input type="password" id="password" formControlName="password" placeholder="Minimum 6 characters"
-		[class.input-error]="isFieldInvalid('password')">
-	  @if (isFieldInvalid('password')) {
-		<div class="error-message">
-		  Password is required and must be at least 6 characters.
-		</div>
-	  }
+        [class.input-error]="isFieldInvalid('password')" autocomplete="current-password">
+      @if (isFieldInvalid('password')) {
+        <div class="error-message">
+          Password is required and must be at least 6 characters.
+        </div>
+      }
     </div>
 
     @if (errorMessage) {
@@ -67,17 +68,16 @@
       </div>
     }
 
-    <button type="submit" [disabled]="loginForm.invalid">
-      {{ isRegistering ? 'Sign Up' : 'Sign In' }}
+    <button type="submit" [disabled]="loginForm.invalid || isLoading">
+      {{ isLoading ? 'Please wait...' : (isRegistering ? 'Sign Up' : 'Sign In') }}
     </button>
 
     <div class="toggle-mode">
       <p>
         {{ isRegistering ? 'Already have an account?' : "Don't have an account?" }}
-        <!-- href="javascript:void(0)" é usado para evitar que a página seja recarregada ao clicar no link, já que a ação é controlada pelo Angular -->
-		<a href="javascript:void(0)" (click)="toggleMode()">
+        <button type="button" class="toggle-link" (click)="toggleMode()">
           {{ isRegistering ? 'Sign In' : 'Sign Up' }}
-        </a>
+        </button>
       </p>
     </div>
   </form>

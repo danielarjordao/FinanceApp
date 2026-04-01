@@ -4,6 +4,8 @@ import { Component } from '@angular/core';
   selector: 'app-forecast',
   imports: [],
   templateUrl: './forecast.html',
-  styleUrl: './forecast.css',
+  styleUrls: ['./forecast.css'],
 })
-export class Forecast {}
+export class Forecast {
+  // TODO(forecast-module): Implementar projeções financeiras | Done when: visão de previsão e fonte de dados backend estiverem disponíveis.
+}

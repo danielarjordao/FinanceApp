@@ -1,123 +1,196 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, NgZone, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable, from, map, switchMap, of, shareReplay, BehaviorSubject, tap } from 'rxjs';
+import { Observable, from, map, switchMap, of, shareReplay, BehaviorSubject, tap, catchError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Auth } from './auth';
-import { Profile } from '../models/profile';
+import {
+  Profile,
+  ProfileDeleteResponse,
+  ProfileListResponse,
+  ProfileResponse,
+} from '../models/profile';
 
 @Injectable({ providedIn: 'root' })
 export class ProfileService {
-  private http = inject(HttpClient);
-  private authService = inject(Auth);
-  private apiUrl = `${environment.apiUrl}/profiles`;
+  private readonly http = inject(HttpClient);
+  private readonly authService = inject(Auth);
+  private readonly ngZone = inject(NgZone);
+  private readonly apiUrl = `${environment.apiUrl}/profiles`;
+  private readonly activeProfileStoragePrefix = 'active_profile_id';
+  private currentUserId: string | null = null;
 
-  // Holds the currently active profile state
+  // Mantem o perfil ativo selecionado.
   private currentProfileSubject = new BehaviorSubject<Profile | null>(null);
 
-  // Observable emitting the currently selected profile for components to react
+  // Exposicao reativa do perfil ativo.
   currentProfile$ = this.currentProfileSubject.asObservable();
 
-  // Observable emitting the user's profile list, fetching from backend and caching
+  // Lista de perfis do usuario com cache compartilhado.
   allProfiles$: Observable<Profile[]> = this.authService.currentUser$.pipe(
     switchMap(user => {
-      // If no authenticated user, return an empty array immediately
-      if (!user) return of([]);
+      if (!user) {
+        this.currentUserId = null;
+        this.setActiveProfile(null, false);
+        return of([]);
+      }
 
-      return from(this.authService.getAccessToken()).pipe(
-        switchMap(token => {
-          let headers = new HttpHeaders();
-          if (token) headers = headers.set('Authorization', `Bearer ${token}`);
+      this.currentUserId = user.id;
 
-          // Fetch profiles for the authenticated user, filtering by user_id
-          const params = new HttpParams().set('user_id', user.id);
+      return this.withAuthHeaders(headers => {
+        const params = new HttpParams().set('user_id', user.id);
 
-          return this.http.get<{ status: string; data: Profile[] }>(this.apiUrl, { headers, params }).pipe(
-            map(response => response.data || []),
-            tap(profiles => {
-              // If no active profile is set and profiles exist, set the first as active
-              if (profiles.length > 0 && !this.currentProfileSubject.value) {
-                this.updateActiveProfile(profiles[0]);
-              }
-            })
-          );
-        })
-      );
+        return this.http.get<ProfileListResponse>(this.apiUrl, { headers, params }).pipe(
+          map(response => response.data || []),
+          tap(profiles => this.ensureActiveProfile(profiles, user.id)),
+          catchError(error => {
+            console.error('Failed to load profiles:', error);
+            this.setActiveProfile(null, false);
+            return of([]);
+          }),
+        );
+      });
     }),
-    shareReplay(1) // Reactive cache: prevents duplicate HTTP calls
+    shareReplay(1),
   );
 
-  /**
-   * Centralized helper to prevent NG0100 errors using setTimeout.
-   * This ensures state changes happen outside the current CD cycle.
-   */
+  // Garante inicializacao do perfil ativo mesmo sem subscriber externo.
+  private readonly profileBootstrapSubscription = this.allProfiles$.subscribe();
+
+  // Atualiza perfil ativo dentro da zona do Angular.
   private updateActiveProfile(profile: Profile | null): void {
-    setTimeout(() => {
+    this.ngZone.run(() => {
       this.currentProfileSubject.next(profile);
-    }); // 0ms timeout
+    });
   }
 
-  // Allows components to change the active profile
-  switchProfile(profile: Profile): void {
+  // Salva id do perfil ativo por usuario para restaurar no F5.
+  private persistActiveProfile(profileId: string | null): void {
+    if (!this.currentUserId || typeof window === 'undefined') {
+      return;
+    }
+
+    const storageKey = this.getActiveProfileStorageKey(this.currentUserId);
+
+    if (!profileId) {
+      window.localStorage.removeItem(storageKey);
+      return;
+    }
+
+    window.localStorage.setItem(storageKey, profileId);
+  }
+
+  // Recupera id salvo do perfil ativo para o usuario.
+  private getSavedActiveProfileId(userId: string): string | null {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    return window.localStorage.getItem(this.getActiveProfileStorageKey(userId));
+  }
+
+  // Monta a chave de storage com escopo por usuario.
+  private getActiveProfileStorageKey(userId: string): string {
+    return `${this.activeProfileStoragePrefix}:${userId}`;
+  }
+
+  // Atualiza estado ativo e persiste quando necessario.
+  private setActiveProfile(profile: Profile | null, shouldPersist = true): void {
     this.updateActiveProfile(profile);
+
+    if (shouldPersist) {
+      this.persistActiveProfile(profile?.id || null);
+    }
   }
 
-  // Creates a new profile, sends to backend, and updates local state if needed
+  // Garante um perfil ativo valido apos recarregar a lista.
+  private ensureActiveProfile(profiles: Profile[], userId: string): void {
+    if (profiles.length === 0) {
+      this.setActiveProfile(null);
+      return;
+    }
+
+    const currentProfileId = this.currentProfileSubject.value?.id;
+    const currentStillExists = profiles.some(profile => profile.id === currentProfileId);
+    if (currentStillExists) {
+      this.persistActiveProfile(currentProfileId || null);
+      return;
+    }
+
+    const savedProfileId = this.getSavedActiveProfileId(userId);
+    const savedProfile = profiles.find(profile => profile.id === savedProfileId);
+
+    if (savedProfile) {
+      this.setActiveProfile(savedProfile);
+      return;
+    }
+
+    this.setActiveProfile(profiles[0]);
+  }
+
+  // Executa operacoes HTTP reutilizando o mesmo fluxo de token/header.
+  private withAuthHeaders<T>(
+    requestFactory: (headers: HttpHeaders) => Observable<T>,
+  ): Observable<T> {
+    return from(this.authService.getAccessToken()).pipe(
+      switchMap(token => requestFactory(this.buildAuthHeaders(token))),
+    );
+  }
+
+  // Monta o header Authorization quando o token existe.
+  private buildAuthHeaders(token?: string): HttpHeaders {
+    let headers = new HttpHeaders();
+
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    return headers;
+  }
+
+  // Permite trocar o perfil ativo pela UI.
+  switchProfile(profile: Profile): void {
+    this.setActiveProfile(profile);
+  }
+
+  // Cria um perfil e ativa automaticamente quando necessario.
   createProfile(profileData: Partial<Profile>): Observable<Profile> {
-    return from(this.authService.getAccessToken()).pipe(
-      switchMap(token => {
-        let headers = new HttpHeaders();
-        if (token) headers = headers.set('Authorization', `Bearer ${token}`);
-
-        return this.http.post<{ status: string; data: Profile }>(this.apiUrl, profileData, { headers }).pipe(
-          map(response => response.data),
-          tap(newProfile => {
-            // If it's the first profile created, set it as active immediately
-            if (!this.currentProfileSubject.value) {
-              this.updateActiveProfile(newProfile);
-            }
-          })
-        );
-      })
+    return this.withAuthHeaders(headers =>
+      this.http.post<ProfileResponse>(this.apiUrl, profileData, { headers }).pipe(
+        map(response => response.data),
+        tap(newProfile => {
+          if (!this.currentProfileSubject.value) {
+            this.setActiveProfile(newProfile);
+          }
+        }),
+      ),
     );
   }
 
-  // Updates an existing profile and instantly reacts if it's the active one
+  // Atualiza um perfil e sincroniza o estado ativo.
   updateProfile(id: string, profileData: Partial<Profile>): Observable<Profile> {
-    return from(this.authService.getAccessToken()).pipe(
-      switchMap(token => {
-        let headers = new HttpHeaders();
-        if (token) headers = headers.set('Authorization', `Bearer ${token}`);
-
-        return this.http.patch<{ status: string; data: Profile }>(`${this.apiUrl}/${id}`, profileData, { headers }).pipe(
-          map(response => response.data),
-          tap(updatedProfile => {
-            // If the updated profile is the currently active one, update the Subject
-            if (this.currentProfileSubject.value?.id === updatedProfile.id) {
-              this.updateActiveProfile(updatedProfile);
-            }
-          })
-        );
-      })
+    return this.withAuthHeaders(headers =>
+      this.http.patch<ProfileResponse>(`${this.apiUrl}/${id}`, profileData, { headers }).pipe(
+        map(response => response.data),
+        tap(updatedProfile => {
+          if (this.currentProfileSubject.value?.id === updatedProfile.id) {
+            this.setActiveProfile(updatedProfile);
+          }
+        }),
+      ),
     );
   }
 
-  // Performs a soft delete and clears state if the deleted profile was active
+  // Remove um perfil e limpa o estado ativo se necessario.
   deleteProfile(id: string): Observable<boolean> {
-    return from(this.authService.getAccessToken()).pipe(
-      switchMap(token => {
-        let headers = new HttpHeaders();
-        if (token) headers = headers.set('Authorization', `Bearer ${token}`);
-
-        return this.http.delete<{ status: string; message: string }>(`${this.apiUrl}/${id}`, { headers }).pipe(
-          map(response => response.status === 'success'),
-          tap(success => {
-            // Clear the active profile from UI if the user just deleted the one they were viewing
-            if (success && this.currentProfileSubject.value?.id === id) {
-              this.updateActiveProfile(null);
-            }
-          })
-        );
-      })
+    return this.withAuthHeaders(headers =>
+      this.http.delete<ProfileDeleteResponse>(`${this.apiUrl}/${id}`, { headers }).pipe(
+        map(response => response.status === 'success'),
+        tap(success => {
+          if (success && this.currentProfileSubject.value?.id === id) {
+            this.setActiveProfile(null);
+          }
+        }),
+      ),
     );
   }
 }

@@ -15,33 +15,37 @@
           </div>
           <div class="dropdown-divider"></div>
 
-          <a routerLink="/dashboard" class="dropdown-item" (click)="isNavMenuOpen = false">
+          <a routerLink="/dashboard" class="dropdown-item" (click)="onNavLinkClick($event, '/dashboard')">
             <span class="material-symbols-outlined">space_dashboard</span> Dashboard
           </a>
-          <a routerLink="/transactions" class="dropdown-item" (click)="isNavMenuOpen = false">
+          <a routerLink="/transactions" class="dropdown-item" (click)="onNavLinkClick($event, '/transactions')">
             <span class="material-symbols-outlined">receipt_long</span> Transactions
           </a>
-          <a routerLink="/accounts" class="dropdown-item" (click)="isNavMenuOpen = false">
+          <a routerLink="/accounts" class="dropdown-item" (click)="onNavLinkClick($event, '/accounts')">
             <span class="material-symbols-outlined">account_balance</span> Accounts
           </a>
-          <a routerLink="/categories" class="dropdown-item" (click)="isNavMenuOpen = false">
+          <a routerLink="/categories" class="dropdown-item" (click)="onNavLinkClick($event, '/categories')">
             <span class="material-symbols-outlined">category</span> Categories
           </a>
 
           <div class="dropdown-divider"></div>
-
-          <a routerLink="/past-12-months" class="dropdown-item" (click)="isNavMenuOpen = false">
+          <!-- TODO(planning-nav): Reativar links de planejamento quando rotas estiverem ativas | Done when: rotas de planejamento estiverem implementadas e integradas. -->
+          <a routerLink="/past-12-months" class="dropdown-item" [class.disabled]="isNavDisabled('/past-12-months')" [attr.aria-disabled]="isNavDisabled('/past-12-months')" [attr.tabindex]="isNavDisabled('/past-12-months') ? -1 : null" (click)="onNavLinkClick($event, '/past-12-months')">
             <span class="material-symbols-outlined">calendar_month</span> Past 12 Months
           </a>
-          <a routerLink="/forecast" class="dropdown-item" (click)="isNavMenuOpen = false">
+          <small class="lock-note">Temporarily locked</small>
+          <a routerLink="/forecast" class="dropdown-item" [class.disabled]="isNavDisabled('/forecast')" [attr.aria-disabled]="isNavDisabled('/forecast')" [attr.tabindex]="isNavDisabled('/forecast') ? -1 : null" (click)="onNavLinkClick($event, '/forecast')">
             <span class="material-symbols-outlined">trending_up</span> Forecast
           </a>
-          <a routerLink="/goals" class="dropdown-item" (click)="isNavMenuOpen = false">
+          <small class="lock-note">Temporarily locked</small>
+          <a routerLink="/goals" class="dropdown-item" [class.disabled]="isNavDisabled('/goals')" [attr.aria-disabled]="isNavDisabled('/goals')" [attr.tabindex]="isNavDisabled('/goals') ? -1 : null" (click)="onNavLinkClick($event, '/goals')">
             <span class="material-symbols-outlined">track_changes</span> Goals
           </a>
-          <a routerLink="/budgets" class="dropdown-item" (click)="isNavMenuOpen = false">
+          <small class="lock-note">Temporarily locked</small>
+          <a routerLink="/budgets" class="dropdown-item" [class.disabled]="isNavDisabled('/budgets')" [attr.aria-disabled]="isNavDisabled('/budgets')" [attr.tabindex]="isNavDisabled('/budgets') ? -1 : null" (click)="onNavLinkClick($event, '/budgets')">
             <span class="material-symbols-outlined">pie_chart</span> Budgets
           </a>
+          <small class="lock-note">Temporarily locked</small>
         </div>
       }
     </div>
@@ -57,7 +61,7 @@
   <div class="header-right">
 
     <div class="dropdown-container">
-      <button class="dropdown-trigger" (click)="toggleProfileMenu($event)">
+      <button class="dropdown-trigger" (click)="toggleProfileMenu($event)" [disabled]="availableProfiles.length === 0">
         <span class="material-symbols-outlined icon-small">account_tree</span>
         <span class="trigger-text">{{ activeProfile?.name || 'Select Profile' }}</span>
         <span class="material-symbols-outlined icon-small">expand_more</span>
@@ -70,17 +74,28 @@
           </div>
           <div class="dropdown-divider"></div>
 
-          @for (profile of availableProfiles; track profile.id) {
-            <button
-              class="dropdown-item"
-              (click)="selectProfile(profile)"
-              [class.active-item]="profile.id === activeProfile?.id">
+          @if (availableProfiles.length === 0) {
+            <div class="dropdown-item dropdown-empty">No profiles available</div>
+          }
 
-              <span class="material-symbols-outlined">
-                {{ profile.id === activeProfile?.id ? 'check_circle' : 'radio_button_unchecked' }}
-              </span>
-              <span>{{ profile.name }}</span>
-            </button>
+          @if (availableProfiles.length > 0) {
+            @for (profile of availableProfiles; track profile.id) {
+              <button
+                class="dropdown-item"
+                (click)="selectProfile(profile)"
+                [class.active-item]="profile.id === activeProfile?.id">
+
+                <span class="material-symbols-outlined">
+                  {{ profile.id === activeProfile?.id ? 'check_circle' : 'radio_button_unchecked' }}
+                </span>
+                <span>{{ profile.name }}</span>
+              </button>
+            }
+
+            <div class="dropdown-divider"></div>
+            <a routerLink="/profiles" class="dropdown-item" (click)="closeAllMenus()">
+              <span class="material-symbols-outlined">settings</span> Manage Profiles
+            </a>
           }
         </div>
       }
@@ -93,7 +108,7 @@
 
     <div class="divider"></div>
 
-    <button class="icon-btn" (click)="toggleTheme()" [title]="isDarkMode ? 'Modo Claro' : 'Modo Escuro'">
+    <button class="icon-btn" (click)="toggleTheme()" [title]="isDarkMode ? 'Light mode' : 'Dark mode'">
       <span class="material-symbols-outlined">
         {{ isDarkMode ? 'light_mode' : 'dark_mode' }}
       </span>
@@ -112,16 +127,16 @@
           </div>
           <div class="dropdown-divider"></div>
 
-          <a routerLink="/profile" class="dropdown-item">
-            <span class="material-symbols-outlined">person</span> My Profile
+          <a routerLink="/user-info" class="dropdown-item" (click)="closeAllMenus()">
+            <span class="material-symbols-outlined">person</span> Personal Details
           </a>
-          <a routerLink="/settings" class="dropdown-item">
+          <a routerLink="/settings" class="dropdown-item" (click)="closeAllMenus()">
             <span class="material-symbols-outlined">tune</span> Preferences
           </a>
 
           <div class="dropdown-divider"></div>
 
-          <button (click)="logout()" class="dropdown-item">
+          <button (click)="logout()" class="dropdown-item logout">
             <span class="material-symbols-outlined">logout</span> Logout
           </button>
         </div>

@@ -106,6 +106,11 @@
   border-color: var(--primary);
 }
 
+.dropdown-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .trigger-text {
   font-size: 0.875rem;
   font-weight: 500;
@@ -174,6 +179,14 @@
   margin: 4px 0;
 }
 
+.lock-note {
+  display: block;
+  padding: 0 16px 8px 44px;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
 /* Itens de dentro do menu (links e botões) */
 .dropdown-item {
   display: flex;
@@ -204,10 +217,28 @@ button.dropdown-item {
   background-color: var(--muted);
 }
 
+.dropdown-item.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dropdown-item.disabled:hover {
+  background-color: transparent;
+}
+
 .dropdown-item .material-symbols-outlined {
   font-size: 1.2rem;
   color: var(--muted-foreground);
   transition: color 0.2s ease;
+}
+
+.dropdown-empty {
+  color: var(--muted-foreground);
+  cursor: default;
+}
+
+.dropdown-empty:hover {
+  background-color: transparent;
 }
 
 /* Destaque para o perfil que está ativo */

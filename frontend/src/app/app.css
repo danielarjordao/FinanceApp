@@ -1,58 +1,72 @@
-.main-content {
-  flex-grow: 1;
-  padding: 32px;
+.app-container {
+  --layout-header-height: 80px;
+  --layout-sidebar-collapsed: 80px;
+  --layout-sidebar-expanded: 260px;
+  --layout-main-padding: 32px;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+.main-content {
+  flex: 1 0 auto;
+  padding: var(--layout-main-padding);
+  display: flex;
+  flex-direction: column;
+}
+
+app-footer {
+  display: block;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+app-header,
+app-sidebar {
+  display: block;
 }
 
 .layout-body {
   display: flex;
-  /* o calc abaixo é para garantir que o conteúdo principal ocupe toda a altura disponível, mesmo com o header fixo */
-  min-height: calc(100vh - 80px);
-  margin-top: 80px; /* Empurra o corpo para baixo do Header fixo */
+  flex: 1 0 auto;
+  min-height: 0;
+  margin-top: var(--layout-header-height);
 }
 
 .content-area {
-  flex-grow: 1;
-  margin-left: 80px; /* Largura da sidebar recolhida */
+  flex: 1 0 auto;
+  margin-left: var(--layout-sidebar-collapsed);
   background-color: var(--muted);
   display: flex;
   flex-direction: column;
-  /* O calc abaixo é para garantir que o conteúdo principal ocupe toda a altura disponível, mesmo com o header fixo */
-  min-height: calc(100vh - 80px);
-  /* Efeito de empurrar o ecrã */
+  min-height: 0;
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Quando a sidebar (dentro do layout-body) expandir, empurra o conteúdo */
 .layout-body:has(.sidebar:hover) .content-area {
-  margin-left: 260px; /* Largura da sidebar expandida */
+  margin-left: var(--layout-sidebar-expanded);
 }
 
 .auth-area {
+  flex: 1 0 auto;
   width: 100%;
-  min-height: 100vh;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: var(--muted);
 }
 
-/* Responsividade */
 @media (max-width: 850px) {
-  /* Desliga a barra lateral completamente */
   app-sidebar {
     display: none;
   }
 
-  /* A área de conteúdo ocupa os 100% da largura (remove os 80px da margem) */
   .content-area {
     margin-left: 0;
   }
 
-  /* Reduz o padding interno */
   .main-content {
     padding: 16px;
   }
-
 }

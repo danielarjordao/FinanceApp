@@ -1,7 +1,5 @@
 <div class="app-container">
-
-<!-- Se o utilizador estiver autenticado-->
-@if (showSidebar) {
+  @if (showAppShell) {
   <app-header></app-header>
 
   <div class="layout-body">
@@ -14,11 +12,11 @@
       <app-footer></app-footer>
     </div>
   </div>
-} @else {
-  <!-- Se for a página de Login -->
+  } @else {
   <main class="auth-area">
     <router-outlet></router-outlet>
   </main>
-}
+  }
 
+  <app-confirm-modal></app-confirm-modal>
 </div>

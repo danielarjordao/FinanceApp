@@ -4,3 +4,14 @@ export interface AuthUser {
   firstName: string;
   lastName: string;
 }
+
+export interface AuthOperationResult {
+  success: boolean;
+  error?: string;
+}
+
+export interface ProfileUpdatePayload {
+  firstName?: string;
+  lastName?: string;
+  password?: string;
+}

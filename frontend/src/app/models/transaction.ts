@@ -25,16 +25,18 @@ export interface BackendResponseTransactions {
 }
 
 export interface TransactionFilters {
+  profile_id?: string;
   month?: number;
   year?: number;
   type?: string;
-  categoryId?: string;
   search?: string;
   page?: number;
   limit?: number;
   sortBy?: string;
   sortOrder?: string;
   tagId?: string;
+  categoryId?: string;
+  accountId?: string;
 }
 
 export interface TransactionWithDetails {
@@ -55,7 +57,7 @@ export interface TransactionWithDetails {
   categories?: {
     name: string;
     icon: string;
-    color?: string; // <- Adicionado para pintar o card
+    color?: string;
   };
   origin_account?: { name: string };
   destination_account?: { name: string } | null;
