@@ -71,4 +71,6 @@ export class AccountService {
       ),
     );
   }
+
+  // TODO(account-service): Adicionar métodos de ordenação e filtragem | Done when: endpoints de ordenação/filtragem estiverem disponíveis no backend.
 }
