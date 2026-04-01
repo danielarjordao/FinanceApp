@@ -6,4 +6,6 @@ import { Component } from '@angular/core';
   templateUrl: './goals.html',
   styleUrls: ['./goals.css'],
 })
-export class Goals {}
+export class Goals {
+  // TODO(goals-module): Implementar gestão de metas financeiras | Done when: CRUD de metas e progresso mensal estiverem integrados ao backend.
+}

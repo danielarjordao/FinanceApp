@@ -290,4 +290,6 @@ export class Transactions implements OnInit, OnDestroy {
   openTransactionDetails(id: string): void {
     this.router.navigate(['/transactions/edit', id]);
   }
+
+  // TODO(transactions-planning): Implementar ações de parcelamento e recorrência | Done when: fluxos e serviços de installments/recurring estiverem integrados.
 }

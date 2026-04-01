@@ -29,7 +29,7 @@
           </a>
 
           <div class="dropdown-divider"></div>
-
+          <!-- TODO(planning-nav): Reativar links de planejamento quando rotas estiverem ativas | Done when: rotas de planejamento estiverem implementadas e integradas. -->
           <a routerLink="/past-12-months" class="dropdown-item" [class.disabled]="isNavDisabled('/past-12-months')" [attr.aria-disabled]="isNavDisabled('/past-12-months')" [attr.tabindex]="isNavDisabled('/past-12-months') ? -1 : null" (click)="onNavLinkClick($event, '/past-12-months')">
             <span class="material-symbols-outlined">calendar_month</span> Past 12 Months
           </a>

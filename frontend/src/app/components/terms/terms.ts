@@ -6,4 +6,6 @@ import { Component } from '@angular/core';
   templateUrl: './terms.html',
   styleUrls: ['./terms.css'],
 })
-export class Terms {}
+export class Terms {
+  // TODO(terms-page): Publicar conteúdo legal definitivo | Done when: texto de termos estiver validado e exibido na página.
+}
