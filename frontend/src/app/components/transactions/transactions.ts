@@ -143,7 +143,7 @@ export class Transactions implements OnInit, OnDestroy {
 
     const filters = this.buildTransactionFilters();
 
-    this.transactionService.getTransactions(filters).subscribe({
+    this.transactionService.getTransactions(this.currentProfileId, filters).subscribe({
       next: (response) => {
         this.transactions = response.data;
         this.totalRecords = response.total;

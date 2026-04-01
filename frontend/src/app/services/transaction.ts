@@ -43,9 +43,12 @@ export class TransactionService {
   }
 
   // Busca transações com base nos filtros informados pela página.
-  getTransactions(filters?: TransactionFilters): Observable<{ data: Transaction[]; total: number }> {
+  getTransactions(currentProfileId: string, filters?: TransactionFilters): Observable<{ data: Transaction[]; total: number }> {
     return this.withAuthHeaders((headers) => {
-      const params = this.buildHttpParams(filters);
+      const params = this.buildHttpParams({
+        ...filters,
+        profile_id: currentProfileId,
+      });
 
       return this.http.get<BackendResponseTransactions>(this.apiUrl, { headers, params }).pipe(
         map(response => ({
