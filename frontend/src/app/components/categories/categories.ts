@@ -1,11 +1,12 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
-import { Subject, finalize, takeUntil } from 'rxjs';
+import { Subject, finalize, take, takeUntil } from 'rxjs';
 import { CategoryService } from '../../services/category';
 import { Category } from '../../models/category';
 import { ProfileService } from '../../services/profile';
 import { LoadingIndicator } from '../../resources/loading-indicator/loading-indicator';
+import { ConfirmModalService } from '../../services/confirm-modal';
 
 type CategoryForm = FormGroup<{
   name: FormControl<string>;
@@ -24,6 +25,7 @@ type CategoryForm = FormGroup<{
 export class Categories implements OnInit, OnDestroy {
   private readonly categoryService = inject(CategoryService);
   private readonly profileService = inject(ProfileService);
+  private readonly confirmModal = inject(ConfirmModalService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroy$ = new Subject<void>();
 
@@ -218,17 +220,29 @@ export class Categories implements OnInit, OnDestroy {
   onDelete(id: string, event: Event): void {
     event.stopPropagation();
 
-    if (confirm('Are you sure you want to delete this category?')) {
-      this.categoryService.deleteCategory(id)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-        next: () => this.loadCategories(),
-        error: err => {
-          this.errorMessage = 'Failed to delete category.';
-          console.error('Failed to delete category:', err);
-          this.cdr.detectChanges();
-        },
+    this.confirmModal.confirm({
+      title: 'Delete category',
+      message: 'Are you sure you want to delete this category?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      isDestructive: true,
+    })
+      .pipe(take(1), takeUntil(this.destroy$))
+      .subscribe(confirmed => {
+        if (!confirmed) {
+          return;
+        }
+
+        this.categoryService.deleteCategory(id)
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+          next: () => this.loadCategories(),
+          error: err => {
+            this.errorMessage = 'Failed to delete category.';
+            console.error('Failed to delete category:', err);
+            this.cdr.detectChanges();
+          },
+        });
       });
-    }
   }
 }
