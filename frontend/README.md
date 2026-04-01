@@ -1,59 +1,69 @@
-# Frontend
+# Personal Finance Dashboard - Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.0.
+Este é o Frontend do Gestor de Finanças Pessoais (MVP). Uma aplicação Single Page Application (SPA) desenvolvida em Angular, focada em proporcionar uma experiência de utilizador fluida, reativa e segura para o controlo financeiro.
 
-## Development server
+## Stack Tecnológica & Arquitetura
 
-To start a local development server, run:
+* **Framework:** Angular (Standalone Components)
+* **Linguagem:** TypeScript
+* **Gestão de Estado/Reatividade:** RxJS (Subjects, Observables)
+* **Estilização:** CSS3 puro (Variáveis globais CSS, Grid, Flexbox, Glassmorphism) sem dependência de bibliotecas externas pesadas.
+* **Segurança de Rotas:** Implementação estrita de Route Guards (`AuthGuard` para áreas privadas e `GuestGuard` para ecrãs de login).
+* **Configuração de Ambiente:** Separação limpa de variáveis de ambiente (`environment.ts` / `environment.development.ts`) para gestão dinâmica do endpoint da API.
+
+## Principais Funcionalidades Implementadas (V1)
+
+* **Dashboard Global:** Resumo de saldos, receitas e despesas mensais, com layout responsivo.
+* **Gestão de Workspaces (Profiles):** Alternância dinâmica entre diferentes perfis financeiros (ex: Pessoal vs. Freelance).
+* **CRUD Completo e Reativo:** Gestão de Contas, Categorias e Transações utilizando formulários reativos do Angular (`ReactiveFormsModule`).
+* **Filtros Avançados:** Barra de pesquisa universal e filtragem por mês, ano, conta, categoria e tipo.
+* **UX/UI Consistente:** * Modais de confirmação globais (`ConfirmModalService`) para ações destrutivas.
+  * *Loading Indicators* para feedback visual durante as chamadas HTTP.
+  * Tratamento de navegação fluida preservando o estado da aplicação.
+* **Settings:** Gestão de preferências do utilizador.
+
+## Roadmap e Próximas Implementações
+
+A aplicação foi desenhada com escalabilidade em mente. O código já contém os alicerces visuais e estruturais para as seguintes *features* (atualmente bloqueadas na UI para garantir a estabilidade do MVP):
+
+* **Planeamento Financeiro:** Implementação dos módulos de Orçamentos (`budgets`), Metas (`goals`) e Previsões (`forecast`).
+* **Transações Complexas:** Suporte para Compras Parceladas (`installments`) e Despesas Recorrentes (`recurring`).
+* **Análise de Dados:** Módulo de análise histórica dos últimos 12 meses.
+* **Hierarquia de Categorias:** Suporte nativo para categorias-pai e subcategorias para relatórios mais granulares.
+* **UX Avançada:** Implementação de um sistema global de tratamento de erros no Dashboard com mensagens contextualizadas e robustas.
+
+## Como Executar Localmente
+
+### Pré-requisitos
+
+* Ter o Node.js (v18+) instalado.
+* Ter o Angular CLI instalado globalmente (`npm install -g @angular/cli`).
+
+### Passos de Execução
+
+#### 1. Clona o repositório e acede à pasta do frontend
+
+```bash
+git clone [teu-link-do-repo]
+cd frontend
+```
+
+#### 2. Instala as dependências do projeto
+
+```bash
+npm install
+```
+
+#### 3. (Opcional) Verifica a configuração do ambiente
+
+Garante que o ficheiro `src/environments/environment.development.ts` aponta para o teu backend local (ex: `http://localhost:3000/api/v1`).
+
+#### 4. Inicia o servidor de desenvolvimento
 
 ```bash
 ng serve
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+#### 5. Acede à aplicação
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Abre o teu navegador em **`http://localhost:4200`**.
