@@ -1,10 +1,11 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Auth } from '../../services/auth';
 import { Footer } from '../../resources/footer/footer';
 import { Logo } from '../../resources/logo/logo';
+import { PreferencesService } from '../../services/preferences';
 
 type LoginForm = FormGroup<{
   firstName: FormControl<string>;
@@ -23,7 +24,8 @@ type LoginForm = FormGroup<{
 export class Login implements OnInit {
   private readonly router = inject(Router);
   private readonly authService = inject(Auth);
-  private readonly darkThemeClass = 'dark';
+  private readonly preferences = inject(PreferencesService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   isRegistering = false;
   errorMessage = '';
@@ -34,7 +36,11 @@ export class Login implements OnInit {
   loginForm: LoginForm = this.createLoginForm();
 
   ngOnInit(): void {
-    this.isDarkMode = document.body.classList.contains(this.darkThemeClass);
+    const currentTheme = this.preferences.current.theme;
+    // Aplica o tema visual atual.
+    this.isDarkMode = currentTheme === 'dark' ||
+                     (currentTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
     this.applyRegisterValidators();
   }
 
@@ -42,12 +48,7 @@ export class Login implements OnInit {
   toggleTheme(): void {
     this.isDarkMode = !this.isDarkMode;
 
-    if (this.isDarkMode) {
-      document.body.classList.add(this.darkThemeClass);
-      return;
-    }
-
-    document.body.classList.remove(this.darkThemeClass);
+    this.preferences.setTheme(this.isDarkMode ? 'dark' : 'light');
   }
 
   // Informa se o campo deve exibir erro.
@@ -84,6 +85,7 @@ export class Login implements OnInit {
       await this.submitLogin();
     } finally {
       this.isLoading = false;
+      this.cdr.detectChanges();
     }
   }
 

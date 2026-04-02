@@ -18,6 +18,7 @@ export class ProfileService {
   private readonly apiUrl = `${environment.apiUrl}/profiles`;
   private readonly activeProfileStoragePrefix = 'active_profile_id';
   private currentUserId: string | null = null;
+  private readonly profilesRefreshTrigger = new BehaviorSubject<void>(undefined);
 
   // Mantem o perfil ativo selecionado.
   private currentProfileSubject = new BehaviorSubject<Profile | null>(null);
@@ -36,19 +37,21 @@ export class ProfileService {
 
       this.currentUserId = user.id;
 
-      return this.withAuthHeaders(headers => {
-        const params = new HttpParams().set('user_id', user.id);
+      return this.profilesRefreshTrigger.pipe(
+        switchMap(() => this.withAuthHeaders(headers => {
+          const params = new HttpParams().set('user_id', user.id);
 
-        return this.http.get<ProfileListResponse>(this.apiUrl, { headers, params }).pipe(
-          map(response => response.data || []),
-          tap(profiles => this.ensureActiveProfile(profiles, user.id)),
-          catchError(error => {
-            console.error('Failed to load profiles:', error);
-            this.setActiveProfile(null, false);
-            return of([]);
-          }),
-        );
-      });
+          return this.http.get<ProfileListResponse>(this.apiUrl, { headers, params }).pipe(
+            map(response => response.data || []),
+            tap(profiles => this.ensureActiveProfile(profiles, user.id)),
+            catchError(error => {
+              console.error('Failed to load profiles:', error);
+              this.setActiveProfile(null, false);
+              return of([]);
+            }),
+          );
+        })),
+      );
     }),
     shareReplay(1),
   );
@@ -152,12 +155,19 @@ export class ProfileService {
     this.setActiveProfile(profile);
   }
 
+  // Recarrega a lista de perfis do utilizador atual.
+  refreshProfiles(): void {
+    this.profilesRefreshTrigger.next();
+  }
+
   // Cria um perfil e ativa automaticamente quando necessario.
   createProfile(profileData: Partial<Profile>): Observable<Profile> {
     return this.withAuthHeaders(headers =>
       this.http.post<ProfileResponse>(this.apiUrl, profileData, { headers }).pipe(
         map(response => response.data),
         tap(newProfile => {
+          this.refreshProfiles();
+
           if (!this.currentProfileSubject.value) {
             this.setActiveProfile(newProfile);
           }
@@ -172,6 +182,8 @@ export class ProfileService {
       this.http.patch<ProfileResponse>(`${this.apiUrl}/${id}`, profileData, { headers }).pipe(
         map(response => response.data),
         tap(updatedProfile => {
+          this.refreshProfiles();
+
           if (this.currentProfileSubject.value?.id === updatedProfile.id) {
             this.setActiveProfile(updatedProfile);
           }
@@ -186,6 +198,10 @@ export class ProfileService {
       this.http.delete<ProfileDeleteResponse>(`${this.apiUrl}/${id}`, { headers }).pipe(
         map(response => response.status === 'success'),
         tap(success => {
+          if (success) {
+            this.refreshProfiles();
+          }
+
           if (success && this.currentProfileSubject.value?.id === id) {
             this.setActiveProfile(null);
           }

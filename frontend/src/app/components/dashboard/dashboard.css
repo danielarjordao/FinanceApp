@@ -25,12 +25,10 @@
 }
 
 .error-state {
-  margin-bottom: 16px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: var(--destructive-foreground);
-  background: var(--destructive);
-  font-size: 0.9rem;
+  color: var(--destructive);
+  padding: 2px;
+  border-radius: 6px;
+  font-size: 0.85rem;
 }
 
 /* 1. Cards de Resumo (Topo) */
@@ -122,7 +120,7 @@
   gap: 24px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .dashboard-grid {
     grid-template-columns: 1fr; /* Coloca um por baixo do outro em mobile */
   }

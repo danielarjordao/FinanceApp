@@ -7,6 +7,7 @@ import { Auth } from '../../services/auth';
 import { Profile } from '../../models/profile';
 import { LoadingIndicator } from '../../resources/loading-indicator/loading-indicator';
 import { ConfirmModalService } from '../../services/confirm-modal';
+import { checkFieldInvalid } from '../../utils/formUtils';
 
 @Component({
   selector: 'app-profiles',
@@ -19,6 +20,7 @@ export class Profiles implements OnInit, OnDestroy {
   private readonly profileService = inject(ProfileService);
   private readonly authService = inject(Auth);
   private readonly confirmModal = inject(ConfirmModalService);
+  private readonly checkFieldInvalid = checkFieldInvalid;
   private readonly destroy$ = new Subject<void>();
 
   // Estado dos Dados
@@ -179,5 +181,9 @@ export class Profiles implements OnInit, OnDestroy {
     if (this.activeProfileId !== profile.id) {
       this.profileService.switchProfile(profile);
     }
+  }
+
+  isFieldInvalid(fieldName: string): boolean {
+    return this.checkFieldInvalid(this.profileForm, fieldName);
   }
 }

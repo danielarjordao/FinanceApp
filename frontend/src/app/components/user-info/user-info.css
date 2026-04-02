@@ -77,14 +77,10 @@ h2 {
 }
 
 .error-message {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--destructive-foreground);
-  background-color: var(--destructive);
-  padding: 12px;
+  color: var(--destructive);
+  padding: 2px;
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .btn-primary {
@@ -145,7 +141,7 @@ h2 {
   border-color: transparent;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .name-row {
     grid-template-columns: 1fr;
   }

@@ -98,7 +98,7 @@
   color: var(--sidebar-foreground);
 }
 
-@media (max-width: 850px) {
+@media (max-width: 768px) {
   .sidebar {
     display: none;
   }
