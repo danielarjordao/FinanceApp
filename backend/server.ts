@@ -25,7 +25,7 @@ const setupMiddlewares = (): void => {
   const allowedOrigins = [
     'http://localhost:4200',
     'https://finance-abko2p0xx-danielarjordaos-projects.vercel.app',
-    'https://financeapp-daniela.vercel.app/',
+    'https://financeapp-daniela.vercel.app',
   ];
 
   // Permite requisições apenas de origens autorizadas.
