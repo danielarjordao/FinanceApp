@@ -17,9 +17,12 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   width: 100%;
-  max-width: 500px;
+  max-width: 550px;
   padding: 24px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  max-height: 95vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
@@ -32,6 +35,17 @@
 .transaction-form {
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.transaction-form::-webkit-scrollbar {
+  width: 6px;
+}
+
+.transaction-form::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
 }
 
 .form-row {
@@ -98,10 +112,10 @@
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 12px;
-  margin-top: 24px;
-  padding-top: 16px;
+  gap: 8px;
+  padding-top: 4px;
   border-top: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .input-full-width {
@@ -115,7 +129,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px; /* Espaço entre ícone e texto */
+  gap: 8px;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
@@ -251,7 +265,7 @@
   margin: 0;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .modal-content {
     max-width: calc(100vw - 24px);
     padding: 16px;

@@ -228,7 +228,7 @@ input:checked + .slider:before {
   font-size: 1rem;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .page-container {
     padding: 16px;
   }

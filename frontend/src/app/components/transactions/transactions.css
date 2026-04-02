@@ -380,3 +380,92 @@
   align-items: center;
   justify-content: center;
 }
+
+/* =========================================
+   RESPONSIVIDADE UNIFICADA (< 768px)
+   Aplica-se a Tablets e Telemóveis
+========================================= */
+@media (max-width: 768px) {
+  /* 1. Header e Botões: Empilhados a 100% para toque fácil */
+  .header-section {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .header-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .header-actions button {
+    width: 100%;
+  }
+
+  /* 2. Toolbar de Filtros: Coluna a 100% da largura */
+  .toolbar-main {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-group, .filter-group {
+    width: 100%;
+  }
+
+  .select-minimal,
+  .input-minimal,
+  .input-search {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .toolbar-main .filter-group:last-child {
+    align-items: flex-end;
+  }
+
+  /* 3. Reestruturação do Cartão de Transação (Estilo App) */
+  .tx-card {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .tx-card-left {
+    align-items: flex-start;
+  }
+
+  .tx-description {
+    white-space: normal; /* Permite que o título quebre de linha */
+    line-height: 1.3;
+  }
+
+  /* 4. A secção do dinheiro vira o "rodapé" do cartão */
+  .tx-card-right {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-left: 0;
+    text-align: left;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+
+  .tx-amount {
+    margin: 0;
+    font-size: 1.15rem;
+  }
+
+  .tx-account-name {
+    margin: 0;
+    text-align: right;
+  }
+
+  /* 5. Paginação fluida */
+  .pagination-footer {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
