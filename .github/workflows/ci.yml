@@ -39,6 +39,11 @@ jobs:
       run:
         working-directory: frontend
 
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        API_URL: ${{ secrets.API_URL }}
+
     steps:
       - name: Fazer o checkout do código
         uses: actions/checkout@v4
