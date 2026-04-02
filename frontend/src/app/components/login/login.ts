@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -25,7 +25,7 @@ export class Login implements OnInit {
   private readonly router = inject(Router);
   private readonly authService = inject(Auth);
   private readonly preferences = inject(PreferencesService);
-  private readonly darkThemeClass = 'dark';
+  private readonly cdr = inject(ChangeDetectorRef);
 
   isRegistering = false;
   errorMessage = '';
@@ -85,6 +85,7 @@ export class Login implements OnInit {
       await this.submitLogin();
     } finally {
       this.isLoading = false;
+      this.cdr.detectChanges();
     }
   }
 
