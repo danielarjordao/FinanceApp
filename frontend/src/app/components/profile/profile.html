@@ -70,7 +70,11 @@
 
         <div class="form-group">
           <label for="name">Profile Name</label>
-          <input id="name" type="text" formControlName="name" class="input-minimal" placeholder="Ex: Personal Finances">
+          <input id="name" type="text" formControlName="name" class="input-minimal" placeholder="Example: Personal Finance"
+                 [class.input-error]="isFieldInvalid('name')">
+          @if (isFieldInvalid('name')) {
+            <div class="error-message">Profile name is required.</div>
+          }
         </div>
 
         <footer class="modal-footer">
