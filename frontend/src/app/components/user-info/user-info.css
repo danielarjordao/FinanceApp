@@ -158,6 +158,33 @@ h2 {
 
   .page-container {
     padding: 16px;
+    max-width: 460px; /* Limitar largura máxima para telas pequenas */
+  }
+}
+
+@media (max-width: 480px) {
+  .page-container {
+    padding: 16px 16px;
+    gap: 12px;
+    max-width: 260px;
+  }
+
+  .profile-card {
+    padding: 16px 16px;
+  }
+
+  .form-layout {
+    gap: 12px;
+  }
+
+  .form-group {
+    gap: 6px;
+  }
+
+  .form-group input {
+    padding: 12px 12px;
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 
