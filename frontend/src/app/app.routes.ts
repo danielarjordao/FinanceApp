@@ -17,9 +17,10 @@ import { UserInfo } from './components/user-info/user-info';
 import { TransactionForm } from './components/transaction-form/transaction-form';
 import { Profiles } from './components/profile/profile';
 
+// Define o caminho para a página de login, usado para redirecionamentos.
 const LOGIN_PATH = '/auth/login';
 
-// Agrupa rotas protegidas para reduzir repeticao.
+// Agrupa rotas protegidas
 const protectedRoutes: Routes = [
   { path: 'dashboard', component: Dashboard },
   { path: 'transactions', component: Transactions },
@@ -39,6 +40,7 @@ const protectedRoutes: Routes = [
   canActivate: [authGuard],
 }));
 
+// Define as rotas principais da aplicação, incluindo rotas protegidas e públicas.
 export const routes: Routes = [
   { path: 'auth/login', component: Login, canActivate: [guestGuard] },
   { path: 'profile', redirectTo: '/user-info', pathMatch: 'full' },
