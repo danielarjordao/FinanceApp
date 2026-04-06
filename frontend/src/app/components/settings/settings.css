@@ -231,6 +231,7 @@ input:checked + .slider:before {
 @media (max-width: 768px) {
   .page-container {
     padding: 16px;
+    max-width: 460px; /* Limitar largura máxima para telas pequenas */
   }
 
   .form-row {
@@ -243,6 +244,28 @@ input:checked + .slider:before {
 
   .btn-primary {
     width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-container {
+    padding: 12px 8px;
+    gap: 12px;
+    max-width: 260px;
+  }
+
+  .settings-card {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .card-header {
+    gap: 12px;
+    padding-bottom: 12px;
+  }
+
+  .form-row {
+    gap: 8px;
   }
 }
 
