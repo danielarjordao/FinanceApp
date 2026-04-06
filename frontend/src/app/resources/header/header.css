@@ -349,7 +349,7 @@ button.dropdown-item.active-item .material-symbols-outlined {
   /* Arrumar o botão do perfil */
   .dropdown-trigger {
     padding: 8px;
-    border-radius: 50%; /* Transforma num círculo perfeito como os outros */
+    border-radius: 50%; /* Transforma num círculo como os outros */
     justify-content: center;
     width: 40px;
     height: 40px;

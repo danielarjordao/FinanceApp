@@ -1,5 +1,4 @@
 <header class="top-header">
-
   <div class="header-left">
     <app-logo></app-logo>
 
@@ -8,6 +7,7 @@
         <span class="material-symbols-outlined">menu</span>
       </button>
 
+      <!-- Menu de navegação para mobile, mostrado apenas quando isNavMenuOpen é true. -->
       @if (isNavMenuOpen) {
         <div class="dropdown-menu glass-strong nav-menu-mobile">
           <div class="dropdown-header">
@@ -51,15 +51,12 @@
     </div>
 
     <div class="divider"></div>
-
     <div class="header-greeting">
       <h1 class="greeting">{{ (currentUser?.firstName || 'User') | greeting }}</h1>
       <span class="current-date">{{ currentDate | date:'EEEE, MMMM d, y' }}</span>
     </div>
   </div>
-
   <div class="header-right">
-
     <div class="dropdown-container">
       <button class="dropdown-trigger" (click)="toggleProfileMenu($event)" [disabled]="availableProfiles.length === 0">
         <span class="material-symbols-outlined icon-small">account_tree</span>
@@ -67,6 +64,7 @@
         <span class="material-symbols-outlined icon-small">expand_more</span>
       </button>
 
+      <!-- Menu de seleção de perfil, mostrado apenas quando isProfileMenuOpen é true. -->
       @if (isProfileMenuOpen) {
         <div class="dropdown-menu glass-strong">
           <div class="dropdown-header">
@@ -91,7 +89,6 @@
                 <span>{{ profile.name }}</span>
               </button>
             }
-
             <div class="dropdown-divider"></div>
             <a routerLink="/profiles" class="dropdown-item" (click)="closeAllMenus()">
               <span class="material-symbols-outlined">settings</span> Manage Profiles
@@ -100,25 +97,21 @@
         </div>
       }
     </div>
-
     <button class="btn-primary" routerLink="/transactions/new">
       <span class="material-symbols-outlined">add</span>
       <span class="btn-text">New Transaction</span>
     </button>
-
     <div class="divider"></div>
-
     <button class="icon-btn" (click)="toggleTheme()" [title]="isDarkMode ? 'Light mode' : 'Dark mode'">
       <span class="material-symbols-outlined">
         {{ isDarkMode ? 'light_mode' : 'dark_mode' }}
       </span>
     </button>
-
     <div class="user-dropdown-container">
       <button class="avatar-btn" (click)="toggleUserMenu($event)">
         {{ userInitials }}
       </button>
-
+      <!-- Menu de usuário, mostrado apenas quando isUserMenuOpen é true. -->
       @if (isUserMenuOpen) {
         <div class="dropdown-menu glass-strong">
           <div class="dropdown-header">
@@ -126,22 +119,18 @@
             <span class="email">{{ currentUser?.email }}</span>
           </div>
           <div class="dropdown-divider"></div>
-
           <a routerLink="/user-info" class="dropdown-item" (click)="closeAllMenus()">
             <span class="material-symbols-outlined">person</span> Personal Details
           </a>
           <a routerLink="/settings" class="dropdown-item" (click)="closeAllMenus()">
             <span class="material-symbols-outlined">tune</span> Preferences
           </a>
-
           <div class="dropdown-divider"></div>
-
           <button (click)="logout()" class="dropdown-item logout">
             <span class="material-symbols-outlined">logout</span> Logout
           </button>
         </div>
       }
     </div>
-
   </div>
 </header>

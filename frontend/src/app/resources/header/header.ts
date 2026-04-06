@@ -42,10 +42,12 @@ export class Header implements OnInit, OnDestroy {
   private readonly disabledRoutes = new Set(['/budgets', '/forecast', '/goals', '/past-12-months']);
   private settingsLoadedForUserId: string | null = null;
 
+  // Verifica se a rota de navegação está desabilitada, para evitar que o usuário acesse funcionalidades ainda não implementadas.
   isNavDisabled(route: string): boolean {
     return this.disabledRoutes.has(route);
   }
 
+  // Manipula cliques em links de navegação, prevenindo a navegação para rotas desabilitadas e fechando menus abertos.
   onNavLinkClick(event: Event, route: string): void {
     if (this.isNavDisabled(route)) {
       event.preventDefault();
@@ -56,6 +58,7 @@ export class Header implements OnInit, OnDestroy {
     this.closeAllMenus();
   }
 
+  // Inicializa o componente, sincronizando o tema com as preferências do usuário e configurando assinaturas para mudanças de estado relevantes (usuário autenticado, perfis disponíveis, perfil ativo).
   ngOnInit(): void {
     this.syncThemeWithPreferences();
     this.subscribeToUser();
@@ -63,6 +66,7 @@ export class Header implements OnInit, OnDestroy {
     this.subscribeToActiveProfile();
   }
 
+  // Limpa as assinaturas para evitar memory leaks quando o componente é destruído.
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
