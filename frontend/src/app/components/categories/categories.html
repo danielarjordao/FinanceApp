@@ -1,5 +1,4 @@
 <div class="page-container">
-
   <header class="page-header">
     <div class="header-titles">
       <h1>Categories</h1>
@@ -10,11 +9,14 @@
       New Category
     </button>
   </header>
-
   @if (errorMessage) {
     <div class="error-state">{{ errorMessage }}</div>
   }
-
+  <!-- Validações de loading e estados vazios dependem do perfil ativo e da lista de categorias -->
+  <!-- 1) Se estiver carregando, mostra indicador de loading. -->
+  <!-- 2) Se não tiver perfil ativo, mostra mensagem para selecionar um perfil. -->
+  <!-- 3) Se tiver perfil ativo mas nenhuma categoria, mostra mensagem de "nenhuma categoria encontrada". -->
+  <!-- 4) Caso contrário, mostra o grid de categorias. -->
   @if (isLoading) {
     <app-loading-indicator message="Loading categories..."></app-loading-indicator>
   } @else if (!activeProfileId) {
@@ -47,6 +49,8 @@
   }
 </div>
 
+<!-- Modal para criar/editar categoria -->
+<!-- Reaproveita o mesmo modal para criação e edição, controlando o modo via isEditMode. -->
 @if (isModalOpen) {
   <div class="modal-overlay" (click)="closeModal()">
     <div class="modal-content" (click)="$event.stopPropagation()">

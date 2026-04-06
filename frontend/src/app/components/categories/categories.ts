@@ -9,6 +9,7 @@ import { LoadingIndicator } from '../../resources/loading-indicator/loading-indi
 import { ConfirmModalService } from '../../services/confirm-modal';
 import { checkFieldInvalid } from '../../utils/formUtils';
 
+// Tipo específico para o formulário de categoria, com validações.
 type CategoryForm = FormGroup<{
   name: FormControl<string>;
   type: FormControl<'INCOME' | 'EXPENSE'>;
@@ -54,6 +55,7 @@ export class Categories implements OnInit, OnDestroy {
   // Formulario de categoria.
   categoryForm: CategoryForm = this.createCategoryForm();
 
+  // Inicializa dados e escuta mudanças de perfil ativo.
   ngOnInit(): void {
     this.profileService.currentProfile$
       .pipe(takeUntil(this.destroy$))
@@ -74,6 +76,7 @@ export class Categories implements OnInit, OnDestroy {
       });
   }
 
+  // Limpa subscriptions para evitar memory leaks.
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
