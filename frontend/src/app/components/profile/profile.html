@@ -1,5 +1,4 @@
 <div class="page-container">
-
   <header class="page-header">
     <div class="header-titles">
       <h1>My Profiles</h1>
@@ -10,11 +9,13 @@
       New Profile
     </button>
   </header>
-
   @if (errorMessage) {
     <div class="error-state">{{ errorMessage }}</div>
   }
-
+  <!-- Validações de loading e estados vazios -->
+  <!-- 1) Se estiver carregando, mostra indicador de loading. -->
+  <!-- 2) Se não tiver nenhum perfil, mostra mensagem de "nenhum perfil encontrado". -->
+  <!-- 3) Caso contrário, mostra o grid de perfis. -->
   @if (isLoading) {
     <app-loading-indicator message="Loading profiles..."></app-loading-indicator>
   } @else if (profiles.length === 0) {
@@ -56,6 +57,8 @@
   }
 </div>
 
+<!-- Modal para criar/editar perfil -->
+<!-- Reaproveita o mesmo modal para criação e edição, controlando o modo via isEditMode. -->
 @if (isModalOpen) {
   <div class="modal-overlay" (click)="closeModal()">
     <div class="modal-content modal-small" (click)="$event.stopPropagation()">
@@ -65,9 +68,7 @@
           <span class="material-symbols-outlined">close</span>
         </button>
       </header>
-
       <form [formGroup]="profileForm" (ngSubmit)="onSubmit()" class="profile-form">
-
         <div class="form-group">
           <label for="name">Profile Name</label>
           <input id="name" type="text" formControlName="name" class="input-minimal" placeholder="Example: Personal Finance"
@@ -76,7 +77,6 @@
             <div class="error-message">Profile name is required.</div>
           }
         </div>
-
         <footer class="modal-footer">
           <button type="button" class="btn-outline" (click)="closeModal()">Cancel</button>
           <button type="submit" class="btn-primary" [disabled]="profileForm.invalid || isSubmitting">
@@ -84,7 +84,6 @@
             {{ isSubmitting ? 'Saving...' : (isEditMode ? 'Update' : 'Save') }}
           </button>
         </footer>
-
       </form>
     </div>
   </div>

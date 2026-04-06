@@ -40,16 +40,18 @@ export class Profiles implements OnInit, OnDestroy {
     name: new FormControl('', [Validators.required, Validators.minLength(2)])
   });
 
+  // Ciclo de vida do componente
   ngOnInit(): void {
     this.subscribeToProfiles();
   }
 
+  // Limpa as subscrições para evitar memory leaks
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
   }
 
-  // Ouve o estado global dos perfis (já gerido pelo teu ProfileService)
+  // Ouve o estado global dos perfis e do perfil ativo, atualizando o componente conforme necessário.
   private subscribeToProfiles(): void {
     this.isLoading = true;
 
@@ -112,7 +114,7 @@ export class Profiles implements OnInit, OnDestroy {
       return;
     }
 
-    // Assume que tens o current user no Auth service para associar ao criar
+    // Assume que tem o current user no Auth service para associar ao criar
     const currentUser = await this.authService.getCurrentUser();
     if (!currentUser && !this.isEditMode) return;
 
@@ -142,6 +144,7 @@ export class Profiles implements OnInit, OnDestroy {
     }
   }
 
+  // Elimina um perfil após confirmação do usuário. Impede a exclusão do último perfil.
   onDelete(id: string, event: Event): void {
     event.stopPropagation();
 
