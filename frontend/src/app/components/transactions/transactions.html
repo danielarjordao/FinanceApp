@@ -144,8 +144,9 @@
         <div class="tx-card" (click)="openTransactionDetails(tx.id)">
 
           <div class="tx-card-left">
-            <!-- Ícone da transação -->
-            <div class="tx-icon" [ngClass]="getTransactionIconClass(tx)">
+            <div class="tx-icon"
+                [ngClass]="getTransactionIconClass(tx)"
+                [style.backgroundColor]="tx.categories?.color || null">
               <span class="material-symbols-outlined">{{ tx.categories?.icon || 'receipt_long' }}</span>
             </div>
 
