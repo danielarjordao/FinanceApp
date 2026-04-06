@@ -32,6 +32,7 @@ export class UserInfo implements OnInit, OnDestroy {
   isLoading = false;
   isReadOnly = true;
 
+  // Inicializa o componente, sincronizando dados do usuario autenticado e aplicando o modo de leitura.
   ngOnInit(): void {
     this.authService.currentUser$
       .pipe(takeUntil(this.destroy$))
@@ -45,6 +46,7 @@ export class UserInfo implements OnInit, OnDestroy {
       });
   }
 
+  // Limpa recursos e subscrições para evitar memory leaks.
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();

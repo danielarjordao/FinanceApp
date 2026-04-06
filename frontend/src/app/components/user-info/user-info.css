@@ -158,7 +158,7 @@ h2 {
 
   .page-container {
     padding: 16px;
-    max-width: 460px; /* Limitar largura máxima para telas pequenas */
+    max-width: 460px;
   }
 }
 

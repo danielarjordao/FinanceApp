@@ -4,14 +4,11 @@
 <div class="page-container">
   <div class="profile-card">
     <div class="header-row">
-
       <h2>Personal Details</h2>
     </div>
-
     <p class="subtitle">
       {{ isReadOnly ? 'Review your personal details.' : 'Update your personal details and password.' }}
     </p>
-
     <form [formGroup]="userInfoForm" (ngSubmit)="onSubmit()" class="form-layout">
       <div class="name-row">
         <div class="form-group">
@@ -24,7 +21,6 @@
             </div>
           }
         </div>
-
         <div class="form-group">
           <label for="lastName">Last Name</label>
           <input type="text" id="lastName" formControlName="lastName" autocomplete="family-name" class="input-minimal"
@@ -36,7 +32,6 @@
             }
         </div>
       </div>
-
       <!-- Mostra a senha apenas em modo de edicao -->
       @if (!isReadOnly) {
         <div class="form-group">
@@ -50,21 +45,19 @@
           }
         </div>
       }
-
+      <!-- Feedback de sucesso ou erro após submissão -->
       @if (successMessage) {
         <div class="success-message">
           <span class="material-symbols-outlined">check_circle</span>
           {{ successMessage }}
         </div>
       }
-
       @if (errorMessage) {
         <div class="error-message">
           <span class="material-symbols-outlined">error</span>
           {{ errorMessage }}
         </div>
       }
-
       <div class="form-actions">
         <!-- Modo somente leitura -->
         @if (isReadOnly) {
@@ -73,13 +66,11 @@
             Edit Details
           </button>
         }
-
         <!-- Modo edicao -->
         @if (!isReadOnly) {
           <button type="button" class="btn-secondary" (click)="cancelEditing()">
             Cancel
           </button>
-
           <button type="submit" class="btn-primary" [disabled]="userInfoForm.invalid || isLoading">
             <span class="material-symbols-outlined">save</span>
             {{ isLoading ? 'Saving...' : 'Save Changes' }}
